@@ -9,6 +9,7 @@ export type StatsSummary = {
 
 export type TableRow = DailyPoint & {
   realmeye_delta: number | null;
+  launcher_delta: number | null;
 };
 
 function latestValue(points: DailyPoint[]): number | null {
@@ -64,13 +65,19 @@ export function buildTableRows(points: DailyPoint[]): TableRow[] {
   return points.map((point, index) => {
     const previous = points[index - 1]?.realmeye_max ?? null;
     const current = point.realmeye_max;
+    const previousLauncher = points[index - 1]?.launcher_loads ?? null;
+    const currentLauncher = point.launcher_loads;
 
     return {
       ...point,
       realmeye_delta:
         current == null || previous == null
           ? null
-          : current - previous
+          : current - previous,
+      launcher_delta:
+        currentLauncher == null || previousLauncher == null
+          ? null
+          : currentLauncher - previousLauncher
     };
   });
 }

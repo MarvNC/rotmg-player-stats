@@ -21,7 +21,9 @@ const CSV_HEADERS = [
   "realmeye_min",
   "realmstock_max",
   "realmstock_min",
-  "realmeye_delta"
+  "realmeye_delta",
+  "launcher_loads",
+  "launcher_delta"
 ] as const;
 
 function numberFormatter(value: number | null): string {
@@ -75,6 +77,29 @@ export function DataTable({ rows }: DataTableProps) {
       {
         accessorKey: "realmeye_delta",
         header: "RealmEye Delta",
+        cell: (info) => {
+          const value = info.getValue<number | null>();
+          if (value == null) {
+            return <span className="table-number mono">-</span>;
+          }
+
+          const className = value >= 0 ? "delta-pill positive" : "delta-pill negative";
+          return (
+            <span className={className}>
+              {value >= 0 ? "+" : ""}
+              {numberFormatter(value)}
+            </span>
+          );
+        }
+      },
+      {
+        accessorKey: "launcher_loads",
+        header: "Launcher Loads",
+        cell: (info) => <span className="table-number mono">{numberFormatter(info.getValue<number | null>())}</span>
+      },
+      {
+        accessorKey: "launcher_delta",
+        header: "Launcher Delta",
         cell: (info) => {
           const value = info.getValue<number | null>();
           if (value == null) {
@@ -175,7 +200,10 @@ export function DataTable({ rows }: DataTableProps) {
         </div>
       </div>
 
-      <div className="data-grid" style={{ "--table-columns": "130px 150px 150px 160px 160px 160px" } as CSSProperties}>
+      <div
+        className="data-grid"
+        style={{ "--table-columns": "130px 150px 150px 160px 160px 160px 160px 160px" } as CSSProperties}
+      >
         <div className="data-grid-row data-grid-header" role="row">
           {table.getFlatHeaders().map((header) => {
             const sortState = header.column.getIsSorted();

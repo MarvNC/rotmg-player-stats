@@ -33,7 +33,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p data
-          gh release download data -R "${{ github.repository }}" -D data -p "realmeye-full.csv" -p "realmstock-full.csv" || true
+          gh release download data -R "${{ github.repository }}" -D data -p "realmeye-full.csv" -p "realmstock-full.csv" -p "launcher-full.csv" || true
 
       - name: Scrape latest values
         run: bun run scrape
@@ -42,7 +42,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release upload data -R "${{ github.repository }}" data/realmeye-full.csv data/realmstock-full.csv --clobber
+          gh release upload data -R "${{ github.repository }}" data/realmeye-full.csv data/realmstock-full.csv data/launcher-full.csv --clobber
 
       - name: Aggregate daily JSON
         run: bun run aggregate

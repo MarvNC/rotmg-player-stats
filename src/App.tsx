@@ -10,7 +10,7 @@ import { filterByRange, resolvePresetRange, type RangePreset } from "./utils/dat
 import { buildStats, buildTableRows } from "./utils/metrics";
 
 type Tab = "charts" | "table";
-type ExpandedChart = "realmeye" | "realmstock" | null;
+type ExpandedChart = "realmeye" | "realmstock" | "launcher" | null;
 
 const data = (dailyData as DailyPoint[]).slice().sort((a, b) => a.date.localeCompare(b.date));
 const allDates = data.map((item) => item.date);
@@ -44,6 +44,14 @@ export default function App() {
   const realmstockMin = useMemo(() => realmstockSeries.map((item) => item.realmstock_min), [realmstockSeries]);
   const realmstockMax = useMemo(() => realmstockSeries.map((item) => item.realmstock_max), [realmstockSeries]);
 
+  const launcherSeries = useMemo(
+    () => filtered.filter((item) => item.launcher_loads != null),
+    [filtered]
+  );
+
+  const launcherDates = useMemo(() => launcherSeries.map((item) => item.date), [launcherSeries]);
+  const launcherLoads = useMemo(() => launcherSeries.map((item) => item.launcher_loads), [launcherSeries]);
+
   useEffect(() => {
     if (expandedChart == null) {
       return;
@@ -69,6 +77,8 @@ export default function App() {
       ? "RealmEye Active Players Over Time"
       : expandedChart === "realmstock"
         ? "RealmStock Live Players Over Time"
+        : expandedChart === "launcher"
+          ? "Launcher Loads Per Day"
         : null;
 
   return (
@@ -142,6 +152,16 @@ export default function App() {
               syncKey="rotmg-sync"
               onPopOut={() => setExpandedChart("realmstock")}
             />
+
+            <PlayerChart
+              title="Launcher Loads Per Day"
+              dates={launcherDates}
+              minValues={launcherLoads}
+              maxValues={launcherLoads}
+              range={range}
+              syncKey="rotmg-sync"
+              onPopOut={() => setExpandedChart("launcher")}
+            />
           </section>
         ) : (
           <DataTable rows={tableRows} />
@@ -170,14 +190,32 @@ export default function App() {
                 </button>
               </div>
 
-              <PlayerChart
-                title={expandedChartTitle}
-                dates={expandedChart === "realmeye" ? realmeyeDates : realmstockDates}
-                minValues={expandedChart === "realmeye" ? realmeyeMin : realmstockMin}
-                maxValues={expandedChart === "realmeye" ? realmeyeMax : realmstockMax}
-                range={range}
-                syncKey="rotmg-modal-sync"
-                height={460}
+                <PlayerChart
+                  title={expandedChartTitle}
+                  dates={
+                    expandedChart === "realmeye"
+                      ? realmeyeDates
+                      : expandedChart === "realmstock"
+                        ? realmstockDates
+                        : launcherDates
+                  }
+                  minValues={
+                    expandedChart === "realmeye"
+                      ? realmeyeMin
+                      : expandedChart === "realmstock"
+                        ? realmstockMin
+                        : launcherLoads
+                  }
+                  maxValues={
+                    expandedChart === "realmeye"
+                      ? realmeyeMax
+                      : expandedChart === "realmstock"
+                        ? realmstockMax
+                        : launcherLoads
+                  }
+                  range={range}
+                  syncKey="rotmg-modal-sync"
+                  height={460}
                 minHeightRatio={0.5}
               />
             </div>

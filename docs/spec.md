@@ -2,7 +2,7 @@
 
 ## Overview
 
-A static website displaying historical Realm of the Mad God active player counts over time, sourced from RealmEye and RealmStock. Data is scraped hourly via GitHub Actions, stored as CSV assets in a GitHub Release, and aggregated into a daily JSON file committed to the repo. The site is hosted on Cloudflare Pages and redeployed only when the aggregated data changes.
+A static website displaying historical Realm of the Mad God activity trends over time, sourced from RealmEye, RealmStock, and launcher loads from Imgur. Data is scraped hourly via GitHub Actions, stored as CSV assets in a GitHub Release, and aggregated into a daily JSON file committed to the repo. The site is hosted on Cloudflare Pages and redeployed only when the aggregated data changes.
 
 ---
 
@@ -12,7 +12,7 @@ A static website displaying historical Realm of the Mad God active player counts
 GitHub Actions (hourly cron)
 │
 ├─ 1. Download CSVs from GitHub Release (tag: "data")
-├─ 2. Scrape RealmEye + RealmStock, append rows to CSVs
+├─ 2. Scrape RealmEye + RealmStock + Launcher Views, append rows to CSVs
 ├─ 3. Re-upload CSVs to release (--clobber)
 ├─ 4. Re-aggregate daily.json from CSVs
 └─ 5. Commit daily.json only if changed → triggers CF Pages deploy
@@ -49,6 +49,11 @@ GitHub Repo
 - **Method:** JSON API, returns a single number
 - **Meaning:** Players currently connected to game servers (real-time, fluctuates throughout the day)
 
+### Imgur — Launcher Loads Counter
+- **URL:** `https://imgur.com/ovCN2lM`
+- **Method:** Parse the HTML metadata text (e.g. `28,695,409 Views`) and extract cumulative view count
+- **Meaning:** Cumulative launcher opens over time. Daily launcher loads are computed from day-over-day differences in cumulative daily maxima.
+
 ---
 
 ## Data Storage
@@ -71,6 +76,13 @@ time,date,players
 09:36:15,2025-01-15,8201
 ```
 
+**`launcher-full.csv`**
+```
+time,date,views
+08:36:15,2025-01-15,28695409
+09:36:15,2025-01-15,28695572
+```
+
 - No header row (keeps append trivial)
 - Times in UTC
 - One row per scrape
@@ -85,13 +97,15 @@ time,date,players
     "realmeye_max": 42150,
     "realmeye_min": 42087,
     "realmstock_max": 8523,
-    "realmstock_min": 7102
+    "realmstock_min": 7102,
+    "launcher_loads": 16432
   }
 ]
 ```
 
 - One entry per calendar day (UTC)
-- `max` / `min` across all scrapes that day
+- `max` / `min` across all scrapes that day for RealmEye and RealmStock
+- `launcher_loads` is daily loads derived from cumulative launcher views
 - `null` for missing source on a given day
 - This is the only file the frontend reads
 
@@ -115,7 +129,7 @@ The existing Google Sheets CSV will be cleaned and imported into `realmeye-full.
 1. Checkout repo
 2. Setup Bun
 3. Download current CSVs from the `data` release via `gh release download`
-4. Run `scripts/scrape.ts` — fetches both sources, appends to CSVs
+4. Run `scripts/scrape.ts` — fetches all sources, appends to CSVs
 5. Upload updated CSVs back to release via `gh release upload --clobber`
 6. Run `scripts/aggregate.ts` — reads CSVs, writes `src/data/daily.json`
 7. If `daily.json` changed: commit and push (triggers CF Pages redeploy)
@@ -158,6 +172,10 @@ Single-page app with two main sections:
 - Same treatment as above
 - Displayed below the RealmEye chart, or as a toggleable overlay on the same chart
 
+**Tertiary chart: Launcher Loads Per Day**
+- Daily values from `launcher_loads`
+- Displayed below the RealmStock chart and synced on X-axis range with the others
+
 **Considerations:**
 - Both charts share the same X axis range (linked zoom/pan)
 - Responsive layout
@@ -179,6 +197,8 @@ Full tabular view of daily.json. Needs to handle ~2,400+ rows efficiently.
 - RealmStock Max
 - RealmStock Min
 - RealmEye Δ (day-over-day change, computed client-side)
+- Launcher Loads
+- Launcher Δ (day-over-day change, computed client-side)
 
 **Features:**
 - Sortable columns

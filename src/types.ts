@@ -4,6 +4,7 @@ export type DailyPoint = {
   realmeye_min: number | null;
   realmstock_max: number | null;
   realmstock_min: number | null;
+  launcher_loads: number | null;
 };
 
 export type DateRange = {

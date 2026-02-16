@@ -8,21 +8,24 @@ const sample: DailyPoint[] = [
     realmeye_max: 100,
     realmeye_min: 90,
     realmstock_max: 20,
-    realmstock_min: 10
+    realmstock_min: 10,
+    launcher_loads: null
   },
   {
     date: "2026-01-02",
     realmeye_max: 130,
     realmeye_min: 120,
     realmstock_max: 22,
-    realmstock_min: 11
+    realmstock_min: 11,
+    launcher_loads: 1000
   },
   {
     date: "2026-01-03",
     realmeye_max: 110,
     realmeye_min: 100,
     realmstock_max: null,
-    realmstock_min: null
+    realmstock_min: null,
+    launcher_loads: 1200
   }
 ];
 
@@ -44,5 +47,8 @@ describe("buildTableRows", () => {
     expect(rows[0]?.realmeye_delta).toBeNull();
     expect(rows[1]?.realmeye_delta).toBe(30);
     expect(rows[2]?.realmeye_delta).toBe(-20);
+    expect(rows[0]?.launcher_delta).toBeNull();
+    expect(rows[1]?.launcher_delta).toBeNull();
+    expect(rows[2]?.launcher_delta).toBe(200);
   });
 });

@@ -6,6 +6,9 @@ const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const DATA_DIR = resolve(ROOT, "data");
 const REALMEYE_FILE = resolve(DATA_DIR, "realmeye-full.csv");
 const REALMSTOCK_FILE = resolve(DATA_DIR, "realmstock-full.csv");
+const LAUNCHER_FILE = resolve(DATA_DIR, "launcher-full.csv");
+const IMGUR_POST_ID = "ovCN2lM";
+const IMGUR_ANON_CLIENT_ID = "546c25a59c58ad7";
 const IS_DRY_RUN = process.argv.includes("--dry-run");
 
 function ensureDataFiles(): void {
@@ -16,6 +19,9 @@ function ensureDataFiles(): void {
   }
   if (!existsSync(REALMSTOCK_FILE)) {
     writeFileSync(REALMSTOCK_FILE, "", "utf8");
+  }
+  if (!existsSync(LAUNCHER_FILE)) {
+    writeFileSync(LAUNCHER_FILE, "", "utf8");
   }
 }
 
@@ -119,6 +125,51 @@ async function scrapeRealmEye(): Promise<number> {
   return buckets.reduce((sum, value) => sum + value, 0);
 }
 
+async function scrapeImgurLauncher(): Promise<number> {
+  const response = await fetch(`https://imgur.com/${IMGUR_POST_ID}`, {
+    headers: {
+      "User-Agent": "rotmg-active-players-bot/1.0",
+      Accept: "text/html"
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Imgur request failed with ${response.status}`);
+  }
+
+  const html = await response.text();
+  const match = html.match(/([\d,]+)\s+Views/i);
+
+  if (match?.[1]) {
+    const views = Number.parseInt(match[1].replace(/,/g, ""), 10);
+    if (Number.isFinite(views)) {
+      return views;
+    }
+  }
+
+  const apiResponse = await fetch(
+    `https://api.imgur.com/post/v1/media/${IMGUR_POST_ID}?include=media,account`,
+    {
+      headers: {
+        Authorization: `Client-ID ${IMGUR_ANON_CLIENT_ID}`,
+        Accept: "application/json"
+      }
+    }
+  );
+
+  if (!apiResponse.ok) {
+    throw new Error(`Imgur API fallback failed with ${apiResponse.status}`);
+  }
+
+  const apiBody = (await apiResponse.json()) as { view_count?: unknown };
+  const views = Number.parseInt(String(apiBody.view_count ?? ""), 10);
+  if (!Number.isFinite(views) || views < 0) {
+    throw new Error("Imgur API response did not contain a numeric view_count");
+  }
+
+  return views;
+}
+
 async function run(): Promise<void> {
   if (!IS_DRY_RUN) {
     ensureDataFiles();
@@ -150,8 +201,21 @@ async function run(): Promise<void> {
     process.stderr.write(`Warning: RealmStock scrape failed: ${(error as Error).message}\n`);
   }
 
+  try {
+    const launcherViews = await scrapeImgurLauncher();
+    appendRow(LAUNCHER_FILE, launcherViews);
+    process.stdout.write(
+      IS_DRY_RUN
+        ? `Launcher views fetch ok (dry-run): ${launcherViews}\n`
+        : `Launcher views appended: ${launcherViews}\n`
+    );
+    successCount += 1;
+  } catch (error) {
+    process.stderr.write(`Warning: Launcher views scrape failed: ${(error as Error).message}\n`);
+  }
+
   if (successCount === 0) {
-    process.stderr.write("Warning: both sources failed during this run.\n");
+    process.stderr.write("Warning: all sources failed during this run.\n");
   }
 }
 
