@@ -355,6 +355,7 @@ export default function App() {
                 syncKey="rotmg-modal-sync"
                 height={460}
                 minHeightRatio={0.5}
+                enableExport
               />
             </div>
           </div>

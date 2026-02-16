@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Expand } from "lucide-react";
+import { Download, Expand } from "lucide-react";
+import { toBlob } from "html-to-image";
 import uPlot from "uplot";
 import type { AlignedData, Options } from "uplot";
 import type { DateRange } from "../types";
@@ -19,6 +20,7 @@ type PlayerChartProps = {
   minHeightRatio?: number;
   showTitle?: boolean;
   onPopOut?: () => void;
+  enableExport?: boolean;
 };
 
 function toUnixDay(date: string): number {
@@ -62,6 +64,23 @@ function formatShareUrl(url: string): string {
   return url.replace(/^https?:\/\//, "").replace(/\/$/, "");
 }
 
+function toExportFileName(title: string): string {
+  const normalized = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return `${normalized || "chart"}.png`;
+}
+
+function shouldIncludeExportNode(node: Node): boolean {
+  if (!(node instanceof Element)) {
+    return true;
+  }
+
+  return node.closest('[data-export-exclude="true"]') == null;
+}
+
 export function PlayerChart({
   title,
   subtitle,
@@ -76,12 +95,15 @@ export function PlayerChart({
   height = 392,
   minHeightRatio,
   showTitle = true,
-  onPopOut
+  onPopOut,
+  enableExport = false
 }: PlayerChartProps) {
+  const chartShellRef = useRef<HTMLDivElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<uPlot | null>(null);
   const [chartHeight, setChartHeight] = useState(height);
+  const [isExporting, setIsExporting] = useState(false);
 
   const resolveHeight = (width: number) => {
     if (minHeightRatio == null) {
@@ -321,6 +343,36 @@ export function PlayerChart({
     chartRef.current.setScale("x", { min, max });
   }, [data, range.end, range.start]);
 
+  const exportChartAsPng = async () => {
+    const chartShell = chartShellRef.current;
+    if (!chartShell || isExporting) {
+      return;
+    }
+
+    setIsExporting(true);
+
+    try {
+      const blob = await toBlob(chartShell, {
+        cacheBust: true,
+        pixelRatio: window.devicePixelRatio || 1,
+        filter: (node) => shouldIncludeExportNode(node)
+      });
+
+      if (!blob) {
+        return;
+      }
+
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = toExportFileName(title);
+      link.click();
+      URL.revokeObjectURL(objectUrl);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   if (data[0].length === 0) {
     return (
       <div className="chart-shell">
@@ -330,7 +382,7 @@ export function PlayerChart({
   }
 
   return (
-    <div className="chart-shell">
+    <div ref={chartShellRef} className="chart-shell">
       {(title || subtitle || shareUrl) && showTitle ? (
         <div className="chart-heading">
           <div className="chart-heading-grid">
@@ -348,10 +400,24 @@ export function PlayerChart({
             </div>
 
             <div className="chart-heading-side chart-heading-side-right">
+              {enableExport ? (
+                <button
+                  type="button"
+                  className="chart-popout-button"
+                  data-export-exclude="true"
+                  onClick={exportChartAsPng}
+                  aria-label={`Export ${title} as PNG`}
+                  disabled={isExporting}
+                >
+                  <Download size={13} aria-hidden="true" />
+                  {isExporting ? "Exporting..." : "Export PNG"}
+                </button>
+              ) : null}
               {onPopOut ? (
                 <button
                   type="button"
                   className="chart-popout-button"
+                  data-export-exclude="true"
                   onClick={onPopOut}
                   aria-label={`Open ${title} in modal`}
                 >
