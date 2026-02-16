@@ -1,4 +1,4 @@
-# ROTMG Player Tracker
+# RotMG Player Stats
 
 Static React dashboard for historical Realm of the Mad God player counts.
 

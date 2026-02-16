@@ -85,7 +85,7 @@ export default function App() {
     <div className="app-shell">
       <header className="topbar">
         <div className="topbar-inner">
-          <h1>ROTMG Player Tracker</h1>
+          <h1>RotMG Player Stats</h1>
         </div>
       </header>
 
@@ -230,6 +230,37 @@ export default function App() {
           </div>
         ) : null}
       </main>
+
+      <footer className="app-footer">
+        <p>
+          Built by{" "}
+          <a
+            href="https://github.com/MarvNC/rotmg-active-players"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            MarvNC
+          </a>
+        </p>
+        <p>
+          Data from{" "}
+          <a
+            href="https://www.realmeye.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Realmeye
+          </a>
+          {" and "}
+          <a
+            href="https://realmstock.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Realmstock
+          </a>
+        </p>
+      </footer>
     </div>
   );
 }

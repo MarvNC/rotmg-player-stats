@@ -1,4 +1,4 @@
-# ROTMG Player Tracker — Project Spec
+# RotMG Player Stats — Project Spec
 
 ## Overview
 
