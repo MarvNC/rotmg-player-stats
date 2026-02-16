@@ -94,9 +94,14 @@ Workflow file: `.github/workflows/scrape.yml`
 
 - Build command: `bun run build`
 - Output directory: `dist`
-- Deploy branch: `main`
+- Deploy branch: repository default branch
 
 Because deploy is tied to pushes, and pushes happen only when `daily.json` changes, Cloudflare redeploys only when aggregated data actually changes.
+
+### Manual deployment options
+
+- Push a commit to the deploy branch (triggers Cloudflare Pages build automatically).
+- Trigger the data pipeline manually from GitHub Actions (`Scrape and Aggregate` -> `Run workflow`) to force a scrape + aggregate cycle.
 
 ## Notes
 
