@@ -84,11 +84,13 @@ Workflow file: `.github/workflows/scrape.yml`
 - Schedule: `36 * * * *`
 - Concurrency group: `scrape`
 - High-level flow:
-  1. Download release assets (`realmeye-full.csv`, `realmstock-full.csv`, `launcher-full.csv`) from tag `data`
-  2. Run scrape script and append latest rows
-  3. Upload assets back to release with `--clobber`
-  4. Rebuild `src/data/daily.json`
-  5. Commit/push only when `daily.json` changes
+  1. Resolve `TARGET_TAG` as current UTC date (`YYYY-MM-DD`) and `SOURCE_TAG` as the latest existing non-draft release tag
+  2. Download release assets (`realmeye-full.csv`, `realmstock-full.csv`, `launcher-full.csv`) from `SOURCE_TAG`
+  3. Run scrape script and append latest rows
+  4. Create today's `TARGET_TAG` release if missing
+  5. Upload assets to `TARGET_TAG` with `--clobber` (overwrites throughout the day)
+  6. Rebuild `src/data/daily.json`
+  7. Commit/push only when `daily.json` changes
 
 ### Cloudflare Pages
 

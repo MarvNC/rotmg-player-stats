@@ -28,12 +28,28 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Resolve release tags
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TARGET_TAG="$(date -u +%F)"
+          SOURCE_TAG="$(gh api repos/${{ github.repository }}/releases?per_page=20 --jq '[.[] | select(.draft|not) | select(.prerelease|not)] | .[0].tag_name // ""')"
+
+          if [ -z "$SOURCE_TAG" ]; then
+            SOURCE_TAG="$TARGET_TAG"
+          fi
+
+          echo "TARGET_TAG=$TARGET_TAG" >> "$GITHUB_ENV"
+          echo "SOURCE_TAG=$SOURCE_TAG" >> "$GITHUB_ENV"
+          echo "Using source release: $SOURCE_TAG"
+          echo "Using target release: $TARGET_TAG"
+
       - name: Download existing CSV assets
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p data
-          gh release download data -R "${{ github.repository }}" -D data -p "realmeye-full.csv" -p "realmstock-full.csv" -p "launcher-full.csv" || true
+          gh release download "$SOURCE_TAG" -R "${{ github.repository }}" -D data -p "realmeye-full.csv" -p "realmstock-full.csv" -p "launcher-full.csv" || true
 
       - name: Scrape latest values
         run: bun run scrape
@@ -42,7 +58,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release upload data -R "${{ github.repository }}" data/realmeye-full.csv data/realmstock-full.csv data/launcher-full.csv --clobber
+          if ! gh release view "$TARGET_TAG" -R "${{ github.repository }}" > /dev/null 2>&1; then
+            gh release create "$TARGET_TAG" -R "${{ github.repository }}" --title "Data $TARGET_TAG" --notes "Automated daily data release."
+          fi
+
+          gh release upload "$TARGET_TAG" -R "${{ github.repository }}" data/realmeye-full.csv data/realmstock-full.csv data/launcher-full.csv --clobber
 
       - name: Aggregate daily JSON
         run: bun run aggregate

@@ -11,9 +11,9 @@ A static website displaying historical Realm of the Mad God activity trends over
 ```
 GitHub Actions (hourly cron)
 │
-├─ 1. Download CSVs from GitHub Release (tag: "data")
+├─ 1. Resolve latest release tag and download CSVs
 ├─ 2. Scrape RealmEye + RealmStock + Launcher Views, append rows to CSVs
-├─ 3. Re-upload CSVs to release (--clobber)
+├─ 3. Upload CSVs to today's UTC tag (YYYY-MM-DD, --clobber)
 ├─ 4. Re-aggregate daily.json from CSVs
 └─ 5. Commit daily.json only if changed → triggers CF Pages deploy
 ```
@@ -60,7 +60,7 @@ GitHub Repo
 
 ### Full CSVs (GitHub Release assets)
 
-Stored under a pinned release with tag `data`. Overwritten every hour.
+Stored in daily releases tagged by UTC date (`YYYY-MM-DD`). Assets are overwritten during the day and a new tag is used each day.
 
 **`realmeye-full.csv`**
 ```
@@ -128,12 +128,13 @@ The existing Google Sheets CSV will be cleaned and imported into `realmeye-full.
 **Steps:**
 1. Checkout repo
 2. Setup Bun
-3. Download current CSVs from the `data` release via `gh release download`
-4. Run `scripts/scrape.ts` — fetches all sources, appends to CSVs
-5. Upload updated CSVs back to release via `gh release upload --clobber`
-6. Run `scripts/aggregate.ts` — reads CSVs, writes `src/data/daily.json`
-7. If `daily.json` changed: commit and push (triggers CF Pages redeploy)
-8. If unchanged (new scrape didn't beat today's max): no commit, no redeploy
+3. Resolve source release (latest existing tag) and target release (today's UTC tag)
+4. Download current CSVs from the source release via `gh release download`
+5. Run `scripts/scrape.ts` — fetches all sources, appends to CSVs
+6. Create today's release if missing and upload updated CSVs via `gh release upload --clobber`
+7. Run `scripts/aggregate.ts` — reads CSVs, writes `src/data/daily.json`
+8. If `daily.json` changed: commit and push (triggers CF Pages redeploy)
+9. If unchanged (new scrape didn't beat today's max): no commit, no redeploy
 
 **Error handling:**
 - If a source is unreachable, skip it (don't append a row), continue with the other
