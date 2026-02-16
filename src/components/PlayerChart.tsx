@@ -104,6 +104,7 @@ export function PlayerChart({
     const options: Options = {
       width: initialWidth,
       height: initialHeight,
+      padding: [20, 10, 10, 10],
       legend: {
         show: false
       },

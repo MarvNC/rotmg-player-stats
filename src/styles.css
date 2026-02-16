@@ -22,9 +22,12 @@
   --topbar-bg: rgba(10, 10, 10, 0.74);
   --topbar-border: rgba(220, 40, 40, 0.25);
   --panel-highlight: rgba(255, 255, 255, 0.02);
+  --stat-card-bg-start: rgba(255, 255, 255, 0.02);
+  --stat-card-bg-end: rgba(255, 255, 255, 0);
   --chart-shell-border: rgba(255, 255, 255, 0.04);
   --chart-frame-start: #171717;
   --chart-frame-end: #141414;
+  --chart-canvas-bg: transparent;
   --chart-button-bg: rgba(10, 10, 10, 0.82);
   --modal-backdrop: rgba(0, 0, 0, 0.7);
   --modal-surface-start: rgba(24, 24, 24, 0.98);
@@ -63,9 +66,12 @@
   --topbar-bg: rgba(247, 248, 251, 0.9);
   --topbar-border: rgba(220, 40, 40, 0.18);
   --panel-highlight: rgba(15, 23, 42, 0.04);
+  --stat-card-bg-start: #ffffff;
+  --stat-card-bg-end: #ffffff;
   --chart-shell-border: rgba(15, 23, 42, 0.14);
-  --chart-frame-start: #f9fafb;
-  --chart-frame-end: #eef2f7;
+  --chart-frame-start: #ffffff;
+  --chart-frame-end: #ffffff;
+  --chart-canvas-bg: #ffffff;
   --chart-button-bg: rgba(255, 255, 255, 0.88);
   --modal-backdrop: rgba(17, 24, 39, 0.35);
   --modal-surface-start: rgba(255, 255, 255, 0.98);
@@ -193,7 +199,7 @@ body.modal-open {
 .stat-card {
   border: 1px solid var(--surface-2);
   border-radius: var(--radius-md);
-  background: linear-gradient(180deg, var(--panel-highlight), rgba(255, 255, 255, 0));
+  background: linear-gradient(180deg, var(--stat-card-bg-start), var(--stat-card-bg-end));
   padding: 16px;
   transition: border-color 160ms ease, transform 160ms ease;
   animation: card-enter 260ms ease both;
@@ -461,12 +467,13 @@ body.modal-open {
   border-radius: 10px;
   overflow: hidden;
   position: relative;
+  padding-top: 10px;
   background: linear-gradient(180deg, var(--chart-frame-start), var(--chart-frame-end));
 }
 
 .chart-popout-button {
   position: absolute;
-  top: 10px;
+  top: 14px;
   right: 10px;
   z-index: 4;
   border: 1px solid rgba(220, 40, 40, 0.45);
@@ -538,6 +545,10 @@ body.modal-open {
   font-family: "Sora", sans-serif;
   color: var(--text-main);
   font-size: 1rem;
+}
+
+.uplot canvas {
+  background: var(--chart-canvas-bg);
 }
 
 .uplot .u-cursor-x,

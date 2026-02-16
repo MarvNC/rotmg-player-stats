@@ -32,7 +32,13 @@ export default function App() {
     const stored = window.localStorage.getItem("rotmg-theme-mode");
     return stored === "light" || stored === "dark" || stored === "system" ? stored : "system";
   });
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>("dark");
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => {
+    if (typeof window === "undefined") {
+      return "dark";
+    }
+
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  });
 
   const filtered = useMemo(() => filterByRange(data, range), [range]);
   const stats = useMemo(() => buildStats(data), []);
