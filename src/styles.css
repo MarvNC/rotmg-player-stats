@@ -2,6 +2,9 @@
 
 :root {
   --brand-red: #dc2828;
+  --pill-active-bg: #dc2828;
+  --pill-active-border: #f87171;
+  --pill-active-shadow: rgba(220, 40, 40, 0.36);
   --bg-dark: #0a0a0a;
   --surface-1: #171717;
   --surface-2: #262626;
@@ -180,9 +183,7 @@ body.modal-open {
 }
 
 .tab-button.active {
-  border-color: rgba(220, 40, 40, 0.85);
-  background: linear-gradient(180deg, rgba(220, 40, 40, 0.72), rgba(171, 24, 24, 0.9));
-  box-shadow: 0 8px 18px rgba(220, 40, 40, 0.32);
+  color: #ffffff;
 }
 
 .range-selector {
@@ -195,7 +196,7 @@ body.modal-open {
 }
 
 .range-pill {
-  border: 0;
+  border: 1px solid transparent;
   border-radius: 999px;
   background: transparent;
   color: var(--text-muted);
@@ -203,7 +204,7 @@ body.modal-open {
   cursor: pointer;
   font-weight: 600;
   letter-spacing: 0.02em;
-  transition: color 130ms ease, background-color 130ms ease;
+  transition: color 130ms ease, border-color 130ms ease, background-color 130ms ease, box-shadow 130ms ease;
 }
 
 .range-pill:hover {
@@ -212,9 +213,14 @@ body.modal-open {
 }
 
 .range-pill.active {
-  color: var(--text-main);
-  background: rgba(220, 40, 40, 0.3);
-  box-shadow: 0 6px 14px rgba(220, 40, 40, 0.2);
+  color: #ffffff;
+}
+
+.tab-button.active,
+.range-pill.active {
+  border-color: var(--pill-active-border);
+  background: var(--pill-active-bg);
+  box-shadow: 0 8px 18px var(--pill-active-shadow);
 }
 
 .charts-stack {
