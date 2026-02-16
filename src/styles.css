@@ -344,13 +344,13 @@ body.modal-open {
   z-index: 120;
   display: grid;
   place-items: center;
-  padding: 12px 16px;
+  padding: 20px;
   background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(6px);
 }
 
 .chart-modal {
-  width: calc(100vw - 32px);
+  width: 90vw;
   max-height: 100%;
   overflow: auto;
   border: 1px solid rgba(220, 40, 40, 0.35);
@@ -367,7 +367,7 @@ body.modal-open {
 .chart-modal-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 10px;
   margin-bottom: 8px;
 }
@@ -694,6 +694,7 @@ body.modal-open {
   }
 
   .chart-modal {
+    width: 100%;
     padding: 10px;
   }
 

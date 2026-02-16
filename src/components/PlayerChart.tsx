@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import uPlot from "uplot";
 import type { AlignedData, Options } from "uplot";
 import type { DateRange } from "../types";
@@ -10,6 +10,10 @@ type PlayerChartProps = {
   maxValues: Array<number | null>;
   range: DateRange;
   syncKey: string;
+  height?: number;
+  minHeightRatio?: number;
+  showTitle?: boolean;
+  onPopOut?: () => void;
 };
 
 function toUnixDay(date: string): number {
@@ -49,10 +53,32 @@ function formatPlayers(value: number | null): string {
   return Intl.NumberFormat("en-US").format(value);
 }
 
-export function PlayerChart({ title, dates, minValues, maxValues, range, syncKey }: PlayerChartProps) {
+export function PlayerChart({
+  title,
+  dates,
+  minValues,
+  maxValues,
+  range,
+  syncKey,
+  height = 392,
+  minHeightRatio,
+  showTitle = true,
+  onPopOut
+}: PlayerChartProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<uPlot | null>(null);
+  const [chartHeight, setChartHeight] = useState(height);
+
+  const resolveHeight = (width: number) => {
+    if (minHeightRatio == null) {
+      return height;
+    }
+
+    return Math.max(height, Math.floor(width * minHeightRatio));
+  };
+
+  const frameHeight = chartHeight + 18;
 
   const data = useMemo<AlignedData>(() => {
     const x = dates.map(toUnixDay);
@@ -65,10 +91,14 @@ export function PlayerChart({ title, dates, minValues, maxValues, range, syncKey
       return;
     }
 
+    const initialWidth = Math.max(host.clientWidth, 320);
+    const initialHeight = resolveHeight(initialWidth);
+
+    setChartHeight(initialHeight);
+
     const options: Options = {
-      title,
-      width: Math.max(host.clientWidth, 320),
-      height: 392,
+      width: initialWidth,
+      height: initialHeight,
       legend: {
         show: false
       },
@@ -204,13 +234,19 @@ export function PlayerChart({ title, dates, minValues, maxValues, range, syncKey
       }
     };
 
+    if (showTitle) {
+      options.title = title;
+    }
+
     const chart = new uPlot(options, data, host);
     chartRef.current = chart;
 
     const observer = new ResizeObserver((entries) => {
       const width = Math.floor(entries[0]?.contentRect.width ?? host.clientWidth);
       if (width > 0) {
-        chart.setSize({ width, height: 392 });
+        const nextHeight = resolveHeight(width);
+        setChartHeight((current) => (current === nextHeight ? current : nextHeight));
+        chart.setSize({ width, height: nextHeight });
       }
     });
 
@@ -221,7 +257,7 @@ export function PlayerChart({ title, dates, minValues, maxValues, range, syncKey
       chart.destroy();
       chartRef.current = null;
     };
-  }, [data, syncKey, title]);
+  }, [data, height, minHeightRatio, showTitle, syncKey, title]);
 
   useEffect(() => {
     if (!chartRef.current || data[0].length === 0) {
@@ -243,7 +279,17 @@ export function PlayerChart({ title, dates, minValues, maxValues, range, syncKey
 
   return (
     <div className="chart-shell">
-      <div className="chart-frame">
+      <div className="chart-frame" style={{ height: `${frameHeight}px` }}>
+        {onPopOut ? (
+          <button
+            type="button"
+            className="chart-popout-button"
+            onClick={onPopOut}
+            aria-label={`Open ${title} in modal`}
+          >
+            Expand
+          </button>
+        ) : null}
         <div ref={hostRef} className="uplot-shell" />
         <div ref={tooltipRef} className="uplot-tooltip" />
       </div>
