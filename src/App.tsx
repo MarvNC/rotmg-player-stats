@@ -75,8 +75,8 @@ export default function App() {
   const expandedChartTitle =
     expandedChart === "realmeye"
       ? "RealmEye Active Players Over Time"
-      : expandedChart === "realmstock"
-        ? "RealmStock Live Players Over Time"
+    : expandedChart === "realmstock"
+        ? "RotMG Max Live Players Over Time"
         : expandedChart === "launcher"
           ? "Launcher Loads Per Day"
         : null;
@@ -86,7 +86,6 @@ export default function App() {
       <header className="topbar">
         <div className="topbar-inner">
           <h1>ROTMG Player Tracker</h1>
-          <p>Daily player trends from RealmEye and RealmStock</p>
         </div>
       </header>
 
@@ -144,10 +143,11 @@ export default function App() {
             />
 
             <PlayerChart
-              title="RealmStock Live Players Over Time"
+              title="RotMG Max Live Players Over Time"
               dates={realmstockDates}
               minValues={realmstockMin}
               maxValues={realmstockMax}
+              tooltipValueLabel="players online"
               range={range}
               syncKey="rotmg-sync"
               onPopOut={() => setExpandedChart("realmstock")}
@@ -158,6 +158,7 @@ export default function App() {
               dates={launcherDates}
               minValues={launcherLoads}
               maxValues={launcherLoads}
+              tooltipValueLabel="loads"
               range={range}
               syncKey="rotmg-sync"
               onPopOut={() => setExpandedChart("launcher")}
@@ -212,6 +213,13 @@ export default function App() {
                       : expandedChart === "realmstock"
                         ? realmstockMax
                         : launcherLoads
+                  }
+                  tooltipValueLabel={
+                    expandedChart === "realmstock"
+                      ? "players online"
+                      : expandedChart === "launcher"
+                        ? "loads"
+                        : "players"
                   }
                   range={range}
                   syncKey="rotmg-modal-sync"

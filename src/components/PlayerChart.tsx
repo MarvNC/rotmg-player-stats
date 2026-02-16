@@ -8,6 +8,7 @@ type PlayerChartProps = {
   dates: string[];
   minValues: Array<number | null>;
   maxValues: Array<number | null>;
+  tooltipValueLabel?: string;
   range: DateRange;
   syncKey: string;
   height?: number;
@@ -58,6 +59,7 @@ export function PlayerChart({
   dates,
   minValues,
   maxValues,
+  tooltipValueLabel = "players",
   range,
   syncKey,
   height = 392,
@@ -220,7 +222,7 @@ export function PlayerChart({
               return;
             }
 
-            tooltip.innerHTML = `<strong>${formatDateLabel(xValue)}</strong><span>${formatPlayers(yValue)} players</span>`;
+            tooltip.innerHTML = `<strong>${formatDateLabel(xValue)}</strong><span>${formatPlayers(yValue)} ${tooltipValueLabel}</span>`;
 
             const cursorLeft = chart.cursor.left;
             const cursorTop = chart.cursor.top;
@@ -298,7 +300,7 @@ export function PlayerChart({
       chart.destroy();
       chartRef.current = null;
     };
-  }, [data, height, minHeightRatio, showTitle, syncKey, title]);
+  }, [data, height, minHeightRatio, showTitle, syncKey, title, tooltipValueLabel]);
 
   useEffect(() => {
     if (!chartRef.current || data[0].length === 0) {
