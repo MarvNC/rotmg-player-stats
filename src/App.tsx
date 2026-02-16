@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { LineChart, MonitorCog, Moon, Sun, Table2, X } from "lucide-react";
+import { Github, LineChart, MonitorCog, Moon, Sun, Table2, X } from "lucide-react";
 import compactData from "./data/daily.json";
 import { DataTable } from "./components/DataTable";
 import { PlayerChart } from "./components/PlayerChart";
@@ -32,6 +32,8 @@ const CHART_COPY = {
 } as const;
 
 const SITE_URL = "https://rotmg-stats.maarv.dev/";
+const GITHUB_PROFILE_URL = "https://github.com/MarvNC";
+const GITHUB_REPO_URL = "https://github.com/MarvNC/rotmg-player-stats";
 
 const data = decodeDailyData(compactData as CompactDaily).sort((a, b) => a.date.localeCompare(b.date));
 const allDates = data.map((item) => item.date);
@@ -182,16 +184,29 @@ export default function App() {
             <h1>RotMG Player Stats</h1>
           </div>
 
-          <button
-            type="button"
-            className="theme-mode-button"
-            onClick={cycleThemeMode}
-            aria-label={`Theme mode: ${themeButton.label}. Click to switch mode.`}
-            title={`Theme: ${themeButton.label}`}
-          >
-            <themeButton.Icon size={16} strokeWidth={2} aria-hidden="true" />
-            <span>{themeButton.label}</span>
-          </button>
+          <div className="topbar-actions">
+            <a
+              className="topbar-link"
+              href={GITHUB_REPO_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Open GitHub repository"
+            >
+              <Github size={16} strokeWidth={2} aria-hidden="true" />
+              <span>GitHub</span>
+            </a>
+
+            <button
+              type="button"
+              className="theme-mode-button"
+              onClick={cycleThemeMode}
+              aria-label={`Theme mode: ${themeButton.label}. Click to switch mode.`}
+              title={`Theme: ${themeButton.label}`}
+            >
+              <themeButton.Icon size={16} strokeWidth={2} aria-hidden="true" />
+              <span>{themeButton.label}</span>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -366,7 +381,7 @@ export default function App() {
         <p>
           Built by{" "}
           <a
-            href="https://github.com/MarvNC/rotmg-player-stats"
+            href={GITHUB_PROFILE_URL}
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -389,16 +404,6 @@ export default function App() {
             rel="noopener noreferrer"
           >
            Realmstock
-          </a>
-        </p>
-        <p>
-          Website: {" "}
-          <a
-            href="https://rotmg-stats.maarv.dev/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            https://rotmg-stats.maarv.dev/
           </a>
         </p>
       </footer>

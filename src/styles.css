@@ -153,6 +153,38 @@ body.modal-open {
   letter-spacing: 0.03em;
 }
 
+.topbar-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topbar-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--surface-2);
+  border-radius: 999px;
+  background: var(--panel-highlight);
+  color: var(--text-main);
+  padding: 8px 12px;
+  font-family: "Sora", sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: border-color 130ms ease, background-color 130ms ease;
+}
+
+.topbar-link:hover {
+  border-color: rgba(220, 40, 40, 0.5);
+  background: rgba(220, 40, 40, 0.14);
+  text-decoration: none;
+}
+
+.topbar-link svg {
+  color: var(--brand-red);
+}
+
 .theme-mode-button {
   display: inline-flex;
   align-items: center;
@@ -896,14 +928,22 @@ body.modal-open {
 @media (max-width: 640px) {
   .topbar-inner {
     align-items: flex-start;
+    justify-content: space-between;
   }
 
   .brand {
     gap: 10px;
   }
 
+  .topbar-actions {
+    flex-direction: column;
+    align-items: stretch;
+    width: 132px;
+  }
+
+  .topbar-link,
   .theme-mode-button {
-    margin-top: 2px;
+    justify-content: center;
   }
 
   .brand-icon {
