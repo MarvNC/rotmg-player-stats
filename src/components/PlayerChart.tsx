@@ -146,8 +146,7 @@ export function PlayerChart({
           time: true
         },
         y: {
-          auto: true,
-          range: (_, _min, max) => [0, max == null || max <= 0 ? 1 : max]
+          auto: true
         }
       },
       axes: [
