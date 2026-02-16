@@ -6,6 +6,7 @@ const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const DATA_DIR = resolve(ROOT, "data");
 const REALMEYE_FILE = resolve(DATA_DIR, "realmeye-full.csv");
 const REALMSTOCK_FILE = resolve(DATA_DIR, "realmstock-full.csv");
+const IS_DRY_RUN = process.argv.includes("--dry-run");
 
 function ensureDataFiles(): void {
   mkdirSync(DATA_DIR, { recursive: true });
@@ -26,6 +27,10 @@ function nowUtcParts(): { time: string; date: string } {
 }
 
 function appendRow(file: string, players: number): void {
+  if (IS_DRY_RUN) {
+    return;
+  }
+
   const { date, time } = nowUtcParts();
   appendFileSync(file, `${time},${date},${players}\n`, "utf8");
 }
@@ -52,6 +57,18 @@ async function scrapeRealmStock(): Promise<number> {
 }
 
 function parseHistogramValues(html: string): number[] {
+  const rankHistogramMatch = html.match(/renderPlayerRankHistogram\([^,]+,\s*(\[\[[\s\S]*?\]\])\s*\)/);
+  if (rankHistogramMatch?.[1]) {
+    const pairs = [...rankHistogramMatch[1].matchAll(/\[(\d+),(\d+)\]/g)];
+    const values = pairs
+      .map((match) => Number.parseInt(match[2] ?? "", 10))
+      .filter((value) => Number.isFinite(value) && value >= 0);
+
+    if (values.length > 0) {
+      return values;
+    }
+  }
+
   const ySeries = [...html.matchAll(/"y"\s*:\s*\[([\d,\s]+)\]/g)]
     .map((match) => match[1])
     .filter((value): value is string => Boolean(value));
@@ -103,14 +120,18 @@ async function scrapeRealmEye(): Promise<number> {
 }
 
 async function run(): Promise<void> {
-  ensureDataFiles();
+  if (!IS_DRY_RUN) {
+    ensureDataFiles();
+  }
 
   let successCount = 0;
 
   try {
     const realmeyePlayers = await scrapeRealmEye();
     appendRow(REALMEYE_FILE, realmeyePlayers);
-    process.stdout.write(`RealmEye appended: ${realmeyePlayers}\n`);
+    process.stdout.write(
+      IS_DRY_RUN ? `RealmEye fetch ok (dry-run): ${realmeyePlayers}\n` : `RealmEye appended: ${realmeyePlayers}\n`
+    );
     successCount += 1;
   } catch (error) {
     process.stderr.write(`Warning: RealmEye scrape failed: ${(error as Error).message}\n`);
@@ -119,7 +140,11 @@ async function run(): Promise<void> {
   try {
     const realmstockPlayers = await scrapeRealmStock();
     appendRow(REALMSTOCK_FILE, realmstockPlayers);
-    process.stdout.write(`RealmStock appended: ${realmstockPlayers}\n`);
+    process.stdout.write(
+      IS_DRY_RUN
+        ? `RealmStock fetch ok (dry-run): ${realmstockPlayers}\n`
+        : `RealmStock appended: ${realmstockPlayers}\n`
+    );
     successCount += 1;
   } catch (error) {
     process.stderr.write(`Warning: RealmStock scrape failed: ${(error as Error).message}\n`);

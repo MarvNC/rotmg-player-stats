@@ -3,6 +3,7 @@ import dailyData from "./data/daily.json";
 import { DataTable } from "./components/DataTable";
 import { PlayerChart } from "./components/PlayerChart";
 import { RangeSelector } from "./components/RangeSelector";
+import { SharedRangeSlider } from "./components/SharedRangeSlider";
 import { StatsCards } from "./components/StatsCards";
 import type { DailyPoint, DateRange } from "./types";
 import { filterByRange, resolvePresetRange, type RangePreset } from "./utils/dateRange";
@@ -11,22 +12,35 @@ import { buildStats, buildTableRows } from "./utils/metrics";
 type Tab = "charts" | "table";
 
 const data = (dailyData as DailyPoint[]).slice().sort((a, b) => a.date.localeCompare(b.date));
+const allDates = data.map((item) => item.date);
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>("charts");
-  const [preset, setPreset] = useState<RangePreset>("1Y");
-  const [range, setRange] = useState<DateRange>(() => resolvePresetRange(data, "1Y"));
+  const [preset, setPreset] = useState<RangePreset>("ALL");
+  const [range, setRange] = useState<DateRange>(() => resolvePresetRange(data, "ALL"));
 
   const filtered = useMemo(() => filterByRange(data, range), [range]);
   const stats = useMemo(() => buildStats(data), []);
 
   const tableRows = useMemo(() => buildTableRows(filtered), [filtered]);
 
-  const dates = useMemo(() => filtered.map((item) => item.date), [filtered]);
-  const realmeyeMin = useMemo(() => filtered.map((item) => item.realmeye_min), [filtered]);
-  const realmeyeMax = useMemo(() => filtered.map((item) => item.realmeye_max), [filtered]);
-  const realmstockMin = useMemo(() => filtered.map((item) => item.realmstock_min), [filtered]);
-  const realmstockMax = useMemo(() => filtered.map((item) => item.realmstock_max), [filtered]);
+  const realmeyeSeries = useMemo(
+    () => filtered.filter((item) => item.realmeye_min != null && item.realmeye_max != null),
+    [filtered]
+  );
+
+  const realmstockSeries = useMemo(
+    () => filtered.filter((item) => item.realmstock_min != null && item.realmstock_max != null),
+    [filtered]
+  );
+
+  const realmeyeDates = useMemo(() => realmeyeSeries.map((item) => item.date), [realmeyeSeries]);
+  const realmeyeMin = useMemo(() => realmeyeSeries.map((item) => item.realmeye_min), [realmeyeSeries]);
+  const realmeyeMax = useMemo(() => realmeyeSeries.map((item) => item.realmeye_max), [realmeyeSeries]);
+
+  const realmstockDates = useMemo(() => realmstockSeries.map((item) => item.date), [realmstockSeries]);
+  const realmstockMin = useMemo(() => realmstockSeries.map((item) => item.realmstock_min), [realmstockSeries]);
+  const realmstockMax = useMemo(() => realmstockSeries.map((item) => item.realmstock_max), [realmstockSeries]);
 
   return (
     <div className="app-shell">
@@ -71,30 +85,31 @@ export default function App() {
 
         {activeTab === "charts" ? (
           <section className="charts-stack">
-            <PlayerChart
-              title="RealmEye Active Players Over Time"
-              dates={dates}
-              minValues={realmeyeMin}
-              maxValues={realmeyeMax}
+            <SharedRangeSlider
+              dates={allDates}
               range={range}
-              onRangeChange={(nextRange) => {
+              onChange={(nextRange) => {
                 setPreset("ALL");
                 setRange(nextRange);
               }}
-              showRangeSlider={true}
+            />
+
+            <PlayerChart
+              title="RealmEye Active Players Over Time"
+              dates={realmeyeDates}
+              minValues={realmeyeMin}
+              maxValues={realmeyeMax}
+              range={range}
+              syncKey="rotmg-sync"
             />
 
             <PlayerChart
               title="RealmStock Live Players Over Time"
-              dates={dates}
+              dates={realmstockDates}
               minValues={realmstockMin}
               maxValues={realmstockMax}
               range={range}
-              onRangeChange={(nextRange) => {
-                setPreset("ALL");
-                setRange(nextRange);
-              }}
-              showRangeSlider={false}
+              syncKey="rotmg-sync"
             />
           </section>
         ) : (

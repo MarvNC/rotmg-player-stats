@@ -12,20 +12,18 @@
     "aggregate": "bun run scripts/aggregate.ts",
     "migrate:realmeye": "bun run scripts/migrate-realmeye.ts",
     "migrate:realmstock": "bun run scripts/migrate-realmstock.ts",
-    "scrape": "bun run scripts/scrape.ts"
+    "scrape": "bun run scripts/scrape.ts",
+    "scrape:dry-run": "bun run scripts/scrape.ts --dry-run"
   },
   "dependencies": {
     "@tanstack/react-table": "^8.21.3",
     "@tanstack/react-virtual": "^3.13.12",
-    "plotly.js-basic-dist-min": "^3.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-plotly.js": "^2.6.0"
+    "uplot": "^1.6.31"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",
-    "@types/plotly.js": "^3.0.5",
-    "@types/react-plotly.js": "^2.6.3",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react": "^5.0.2",
