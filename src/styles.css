@@ -376,7 +376,6 @@ body.modal-open {
 .range-pill.active {
   border-color: var(--pill-active-border);
   background: var(--pill-active-bg);
-  box-shadow: 0 8px 18px var(--pill-active-shadow);
 }
 
 .charts-stack {
@@ -598,7 +597,7 @@ body.modal-open {
   min-height: 30px;
   padding: 6px 12px;
   cursor: pointer;
-  transition: border-color 130ms ease, background-color 130ms ease, color 130ms ease, box-shadow 130ms ease;
+  transition: border-color 130ms ease, background-color 130ms ease, color 130ms ease;
 }
 
 .chart-toggle-button:hover {
@@ -610,7 +609,6 @@ body.modal-open {
   border-color: var(--pill-active-border);
   background: var(--pill-active-bg);
   color: #ffffff;
-  box-shadow: 0 8px 18px var(--pill-active-shadow);
 }
 
 .chart-modal-backdrop {
