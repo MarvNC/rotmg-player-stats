@@ -5,12 +5,32 @@ type StatsCardsProps = {
   stats: StatsSummary;
 };
 
+const relativeTimeFormatter = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+
 function formatNumber(value: number | null): string {
   if (value == null) {
     return "-";
   }
 
   return Intl.NumberFormat("en-US").format(value);
+}
+
+function formatRelativeLastUpdated(value: string | null): string {
+  if (value == null) {
+    return "-";
+  }
+
+  const timestamp = Date.parse(value);
+  if (Number.isNaN(timestamp)) {
+    return "-";
+  }
+
+  const now = new Date();
+  const todayUtcTimestamp = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const millisecondsPerDay = 24 * 60 * 60 * 1000;
+  const dayDelta = Math.round((timestamp - todayUtcTimestamp) / millisecondsPerDay);
+
+  return relativeTimeFormatter.format(dayDelta, "day");
 }
 
 export function StatsCards({ stats }: StatsCardsProps) {
@@ -45,9 +65,10 @@ export function StatsCards({ stats }: StatsCardsProps) {
       <article className="stat-card">
         <p className="stat-label with-icon">
           <Clock3 size={14} aria-hidden="true" />
-          Last Updated (UTC)
+          Last Updated
         </p>
-        <p className="stat-value">{stats.lastUpdatedDate ?? "-"}</p>
+        <p className="stat-value">{formatRelativeLastUpdated(stats.lastUpdatedDate)}</p>
+        <p className="stat-meta">{stats.lastUpdatedDate ?? "-"} UTC</p>
       </article>
     </section>
   );
