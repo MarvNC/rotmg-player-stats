@@ -85,7 +85,10 @@ export default function App() {
     <div className="app-shell">
       <header className="topbar">
         <div className="topbar-inner">
-          <h1>RotMG Player Stats</h1>
+          <div className="brand">
+            <img className="brand-icon" src="/image.png" width={40} height={40} alt="RotMG Player Stats logo" />
+            <h1>RotMG Player Stats</h1>
+          </div>
         </div>
       </header>
 
