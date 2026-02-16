@@ -66,8 +66,8 @@ Data pipeline commands:
 
 - Aggregation script: `scripts/aggregate.ts`
   - Reads `data/realmeye-full.csv`, `data/realmstock-full.csv`, and `data/launcher-full.csv`
-  - Produces day-level RealmEye/RealmStock min/max and launcher daily loads into `src/data/daily.json`
-  - Applies a minimum output date cutoff at `2024-07-03`
+  - Produces day-level min/max values for RealmEye/RealmStock and `launcher_loads` for launcher data in `src/data/daily.json`
+  - Launcher loads are derived from day-over-day differences in cumulative daily max views and are only emitted from `2024-07-03` onward
 
 - Migration scripts:
   - `scripts/migrate-realmeye.ts`
@@ -94,14 +94,9 @@ Workflow file: `.github/workflows/scrape.yml`
 
 - Build command: `bun run build`
 - Output directory: `dist`
-- Deploy branch: repository default branch
+- Deploy branch: `main`
 
 Because deploy is tied to pushes, and pushes happen only when `daily.json` changes, Cloudflare redeploys only when aggregated data actually changes.
-
-### Manual deployment options
-
-- Push a commit to the deploy branch (triggers Cloudflare Pages build automatically).
-- Trigger the data pipeline manually from GitHub Actions (`Scrape and Aggregate` -> `Run workflow`) to force a scrape + aggregate cycle.
 
 ## Notes
 

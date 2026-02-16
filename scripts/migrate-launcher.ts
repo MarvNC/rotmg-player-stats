@@ -11,6 +11,7 @@ const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const SOURCE_FILE = resolve(ROOT, "RotMG Launcher Loads - Data.csv");
 const OUTPUT_FILE = resolve(ROOT, "data", "launcher-full.csv");
 const SOURCE_TIMEZONE = "America/New_York";
+const LAUNCHER_MIN_DATE = "2024-07-03";
 
 function splitCsvLine(line: string): string[] {
   const fields: string[] = [];
@@ -163,6 +164,10 @@ function run(): void {
     .map((row) => {
       const utc = nyLocalToUtc(row.localDateTime);
       if (!utc) {
+        return null;
+      }
+
+      if (utc.date < LAUNCHER_MIN_DATE) {
         return null;
       }
 

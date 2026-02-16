@@ -31,7 +31,7 @@ const REALMEYE_FILE = resolve(ROOT, "data", "realmeye-full.csv");
 const REALMSTOCK_FILE = resolve(ROOT, "data", "realmstock-full.csv");
 const LAUNCHER_FILE = resolve(ROOT, "data", "launcher-full.csv");
 const OUTPUT_FILE = resolve(ROOT, "src", "data", "daily.json");
-const MIN_DATE = "2024-07-03";
+const LAUNCHER_MIN_DATE = "2024-07-03";
 
 function parseCsvRows(inputPath: string): Row[] {
   if (!existsSync(inputPath)) {
@@ -132,6 +132,10 @@ function aggregateLauncherLoads(rows: LauncherRow[]): Map<string, number | null>
   const dailyMax = new Map<string, number>();
 
   for (const row of rows) {
+    if (row.date < LAUNCHER_MIN_DATE) {
+      continue;
+    }
+
     const existing = dailyMax.get(row.date);
     if (existing == null || row.views > existing) {
       dailyMax.set(row.date, row.views);
@@ -212,13 +216,13 @@ function run(): void {
     aggregateByDate(realmeyeRows),
     aggregateByDate(realmstockRows),
     aggregateLauncherLoads(launcherRows)
-  ).filter((entry) => entry.date >= MIN_DATE);
+  );
 
   mkdirSync(resolve(ROOT, "src", "data"), { recursive: true });
   writeFileSync(OUTPUT_FILE, `${JSON.stringify(merged, null, 2)}\n`, "utf8");
 
   process.stdout.write(
-    `Aggregated ${merged.length} days from ${realmeyeRows.length} RealmEye rows, ${realmstockRows.length} RealmStock rows, and ${launcherRows.length} launcher rows (cutoff ${MIN_DATE}).\n`
+    `Aggregated ${merged.length} days from ${realmeyeRows.length} RealmEye rows, ${realmstockRows.length} RealmStock rows, and ${launcherRows.length} launcher rows.\n`
   );
 }
 
