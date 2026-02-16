@@ -18,13 +18,13 @@ type ResolvedTheme = "light" | "dark";
 
 const CHART_COPY = {
   realmeye: {
-    title: "RealmEye Active Players Over Time",
-    subtitle: "Amount of players seen in the past two weeks, based on RealmEye data."
+    title: "Active Players Over Time",
+    subtitle: "Amount of players seen in the past two weeks."
   },
   realmstock: {
-    title: "RotMG Max Live Players Over Time",
-    subtitle: "Maximum number of players logged in at any point each day, based on RealmStock data.",
-    smoothedSubtitle: "7-day rolling average of daily min and max live players, based on RealmStock data."
+    title: "Max Online Players Over Time",
+    subtitle: "Maximum number of players logged in at any point each day.",
+    smoothedSubtitle: "7-day rolling average of daily min and max live players."
   },
   launcher: {
     title: "Launcher Loads Per Day",
