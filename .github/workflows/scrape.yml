@@ -1,9 +1,6 @@
 name: Scrape and Aggregate
 
 on:
-  push:
-    branches:
-      - master
   schedule:
     - cron: "36 * * * *"
   workflow_dispatch:
