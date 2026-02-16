@@ -258,7 +258,15 @@ export function PlayerChart({
                   ? leftLeft
                   : Math.min(Math.max(rightLeft, pad), maxLeft);
 
-            const tooltipTop = Math.min(Math.max(anchorTop - tooltipHeight / 2, pad), maxTop);
+            const aboveTop = anchorTop - tooltipHeight - gap;
+            const belowTop = anchorTop + gap;
+
+            const tooltipTop =
+              aboveTop >= pad
+                ? aboveTop
+                : belowTop <= maxTop
+                  ? belowTop
+                  : Math.min(Math.max(aboveTop, pad), maxTop);
 
             tooltip.style.transform = `translate(${Math.round(tooltipLeft)}px, ${Math.round(tooltipTop)}px)`;
             tooltip.style.opacity = "1";
