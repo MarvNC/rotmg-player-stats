@@ -247,7 +247,7 @@ export default function App() {
         <p>
           Built by{" "}
           <a
-            href="https://github.com/MarvNC/rotmg-active-players"
+            href="https://github.com/MarvNC/rotmg-player-stats"
             target="_blank"
             rel="noopener noreferrer"
           >
