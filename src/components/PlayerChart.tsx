@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Download, Expand } from "lucide-react";
 import { toBlob } from "html-to-image";
-import uPlot from "uplot";
+import { Download, Expand } from "lucide-react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AlignedData, Options } from "uplot";
+import uPlot from "uplot";
+
 import type { DateRange } from "../types";
 
 type PlayerChartProps = {
@@ -82,21 +83,21 @@ function shouldIncludeExportNode(node: Node): boolean {
 }
 
 export function PlayerChart({
-  title,
-  subtitle,
-  shareUrl,
   dates,
-  maxValues,
-  tooltipValueLabel = "players",
-  theme,
-  range,
-  syncKey,
-  height = 392,
-  minHeightRatio,
-  showTitle = true,
-  onPopOut,
   enableExport = false,
   headerControls,
+  height = 392,
+  maxValues,
+  minHeightRatio,
+  onPopOut,
+  range,
+  shareUrl,
+  showTitle = true,
+  subtitle,
+  syncKey,
+  theme,
+  title,
+  tooltipValueLabel = "players",
 }: PlayerChartProps) {
   const chartShellRef = useRef<HTMLDivElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);

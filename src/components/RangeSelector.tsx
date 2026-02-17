@@ -1,5 +1,6 @@
-import type { RangePreset } from "../utils/dateRange";
 import { CalendarRange } from "lucide-react";
+
+import type { RangePreset } from "../utils/dateRange";
 
 type RangeSelectorProps = {
   active: RangePreset;
@@ -19,7 +20,7 @@ export function RangeSelector({ active, onSelect }: RangeSelectorProps) {
         <button
           key={preset}
           type="button"
-          className={`range-pill${active === preset ? " active" : ""}`}
+          className={`range-pill${active === preset ? "active" : ""}`}
           onClick={() => onSelect(preset)}
         >
           {preset}

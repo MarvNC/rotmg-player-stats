@@ -1,5 +1,6 @@
-import { useMemo, useRef, type PointerEvent as ReactPointerEvent } from "react";
 import { CalendarDays, SlidersHorizontal } from "lucide-react";
+import { type PointerEvent as ReactPointerEvent, useMemo, useRef } from "react";
+
 import type { DateRange } from "../types";
 
 type SharedRangeSliderProps = {
@@ -23,7 +24,7 @@ function findEndIndex(dates: string[], target: string): number {
   return 0;
 }
 
-export function SharedRangeSlider({ dates, range, onChange }: SharedRangeSliderProps) {
+export function SharedRangeSlider({ dates, onChange, range }: SharedRangeSliderProps) {
   const sliderRef = useRef<HTMLDivElement>(null);
 
   const bounds = useMemo(() => {

@@ -1,5 +1,6 @@
-import type { StatsSummary } from "../utils/metrics";
 import { ArrowDown, Clock3, Trophy, Users } from "lucide-react";
+
+import type { StatsSummary } from "../utils/metrics";
 
 type StatsCardsProps = {
   stats: StatsSummary;

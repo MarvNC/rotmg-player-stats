@@ -1,15 +1,16 @@
-import { useMemo, useRef, useState, type CSSProperties } from "react";
-import { Download, Search, Table2 } from "lucide-react";
 import {
+  type ColumnDef,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
   getSortedRowModel,
-  useReactTable,
-  type ColumnDef,
   type SortingState,
+  useReactTable,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { Download, Search, Table2 } from "lucide-react";
+import { type CSSProperties, useMemo, useRef, useState } from "react";
+
 import type { TableRow } from "../utils/metrics";
 
 type DataTableProps = {
@@ -225,11 +226,11 @@ export function DataTable({ rows }: DataTableProps) {
               <div className="data-grid-cell" key={header.id} role="columnheader">
                 <button
                   type="button"
-                  className={`header-sort${sortState ? " sorted" : ""}`}
+                  className={`header-sort${sortState ? "sorted" : ""}`}
                   onClick={header.column.getToggleSortingHandler()}
                 >
                   <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
-                  <span className={`sort-indicator${sortState ? " active" : ""}`}>
+                  <span className={`sort-indicator${sortState ? "active" : ""}`}>
                     {sortState === "asc" ? "^" : sortState === "desc" ? "v" : "^v"}
                   </span>
                 </button>
@@ -246,7 +247,7 @@ export function DataTable({ rows }: DataTableProps) {
               return (
                 <div
                   key={row.id}
-                  className={`data-grid-row data-grid-body-row${virtualRow.index % 2 === 0 ? " even" : " odd"}`}
+                  className={`data-grid-row data-grid-body-row${virtualRow.index % 2 === 0 ? "even" : "odd"}`}
                   role="row"
                   style={{
                     position: "absolute",
@@ -260,7 +261,7 @@ export function DataTable({ rows }: DataTableProps) {
                     <div
                       key={cell.id}
                       role="cell"
-                      className={`data-grid-cell${cell.column.id === "date" ? "" : " is-number"}`}
+                      className={`data-grid-cell${cell.column.id === "date" ? "" : "is-number"}`}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </div>

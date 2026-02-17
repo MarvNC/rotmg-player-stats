@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
 import { Github, LineChart, MonitorCog, Moon, Sun, Table2, X } from "lucide-react";
-import compactData from "./data/daily.json";
+import { useEffect, useMemo, useState } from "react";
+
 import { DataTable } from "./components/DataTable";
 import { PlayerChart } from "./components/PlayerChart";
 import { RangeSelector } from "./components/RangeSelector";
 import { SharedRangeSlider } from "./components/SharedRangeSlider";
 import { StatsCards } from "./components/StatsCards";
+import compactData from "./data/daily.json";
 import type { CompactDaily, DateRange } from "./types";
-import { filterByRange, resolvePresetRange, type RangePreset } from "./utils/dateRange";
+import { filterByRange, type RangePreset, resolvePresetRange } from "./utils/dateRange";
 import { decodeDailyData } from "./utils/decodeDailyData";
 import { buildStats, buildTableRows } from "./utils/metrics";
 
@@ -186,7 +187,7 @@ export default function App() {
   const renderWeeklySmoothingToggle = (chartTitle: string, isActive: boolean, onToggle: () => void) => (
     <button
       type="button"
-      className={`chart-toggle-button${isActive ? " is-active" : ""}`}
+      className={`chart-toggle-button${isActive ? "is-active" : ""}`}
       data-export-exclude="true"
       onClick={onToggle}
       aria-label={`Weekly smoothing ${isActive ? "on" : "off"} for ${chartTitle}`}
@@ -257,7 +258,7 @@ export default function App() {
             <button
               role="tab"
               aria-selected={activeTab === "charts"}
-              className={`tab-button${activeTab === "charts" ? " active" : ""}`}
+              className={`tab-button${activeTab === "charts" ? "active" : ""}`}
               onClick={() => setActiveTab("charts")}
             >
               <LineChart size={15} aria-hidden="true" />
@@ -266,7 +267,7 @@ export default function App() {
             <button
               role="tab"
               aria-selected={activeTab === "table"}
-              className={`tab-button${activeTab === "table" ? " active" : ""}`}
+              className={`tab-button${activeTab === "table" ? "active" : ""}`}
               onClick={() => setActiveTab("table")}
             >
               <Table2 size={15} aria-hidden="true" />
