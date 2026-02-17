@@ -36,7 +36,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TARGET_TAG="$(date -u +%F)"
-          SOURCE_TAG="$(gh api repos/${{ github.repository }}/releases?per_page=20 --jq '[.[] | select(.draft|not) | select(.prerelease|not)] | .[0].tag_name // ""')"
+          SOURCE_TAG="$(gh api repos/${{ github.repository }}/releases?per_page=50 --jq '[.[] | select(.draft|not) | select(.prerelease|not) | .tag_name | select(test("^[0-9]{4}-[0-9]{2}-[0-9]{2}$"))] | .[0] // ""')"
 
           if [ -z "$SOURCE_TAG" ]; then
             SOURCE_TAG="$TARGET_TAG"
@@ -53,7 +53,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p data
-          gh release download "$SOURCE_TAG" -R "${{ github.repository }}" -D data -p "realmeye-full.csv" -p "realmstock-full.csv" -p "launcher-full.csv" || true
+          gh release download "$SOURCE_TAG" -R "${{ github.repository }}" -D data -p "realmeye-full.csv" -p "realmstock-full.csv" -p "launcher-full.csv" --clobber || true
           [ -f data/realmeye-full.csv ] || : > data/realmeye-full.csv
           [ -f data/realmstock-full.csv ] || : > data/realmstock-full.csv
           [ -f data/launcher-full.csv ] || : > data/launcher-full.csv
