@@ -1,4 +1,4 @@
-name: Scrape and Aggregate
+name: Scrape CSV Data
 
 on:
   schedule:
@@ -183,19 +183,3 @@ jobs:
           fi
 
           gh release upload "$TARGET_TAG" -R "${{ github.repository }}" data/realmeye-full.csv data/realmstock-full.csv data/launcher-full.csv --clobber
-
-      - name: Aggregate daily JSON
-        run: bun run aggregate
-
-      - name: Commit daily.json when changed
-        run: |
-          if git diff --quiet -- src/data/daily.json; then
-            echo "No daily.json changes; skipping commit."
-            exit 0
-          fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/data/daily.json
-          git commit -m "chore(data): update daily aggregation"
-          git push

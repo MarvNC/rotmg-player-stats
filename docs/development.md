@@ -84,20 +84,28 @@ Data pipeline commands:
 
 ## Deployment
 
-### GitHub Actions (hourly scrape)
+### GitHub Actions
 
-Workflow file: `.github/workflows/scrape.yml`
+Hourly CSV scrape workflow: `.github/workflows/scrape.yml`
 
-- Schedule: `36 * * * *`
+- Schedule: `0 * * * *`
 - Concurrency group: `scrape`
 - High-level flow:
-  1. Resolve `TARGET_TAG` as current UTC date (`YYYY-MM-DD`) and `SOURCE_TAG` as the latest existing non-draft release tag
-  2. Download release assets (`realmeye-full.csv`, `realmstock-full.csv`, `launcher-full.csv`) from `SOURCE_TAG`
-  3. Run scrape script and append latest rows
-  4. Create today's `TARGET_TAG` release if missing
-  5. Upload assets to `TARGET_TAG` with `--clobber` (overwrites throughout the day)
-  6. Rebuild `src/data/daily.json`
-  7. Commit/push only when `daily.json` changes
+  1. Resolve `TARGET_TAG` as current UTC date (`YYYY-MM-DD`) and `SOURCE_TAG` as the latest dated release tag
+  2. Download release CSV assets from `SOURCE_TAG`
+  3. Run per-source scrape jobs (RealmEye, RealmStock, Launcher)
+  4. Upload merged CSV assets to `TARGET_TAG` with `--clobber`
+  5. Do not rebuild or commit `src/data/daily.json`
+
+Daily aggregate workflow: `.github/workflows/aggregate-daily.yml`
+
+- Schedule: `55 23 * * *`
+- Concurrency group: `aggregate-daily`
+- High-level flow:
+  1. Resolve `SOURCE_TAG` as the latest dated release tag
+  2. Download release CSV assets from `SOURCE_TAG`
+  3. Rebuild `src/data/daily.json`
+  4. Commit/push only when `daily.json` changes
 
 ### Cloudflare Pages
 
