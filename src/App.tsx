@@ -18,16 +18,16 @@ type ResolvedTheme = "light" | "dark";
 
 const CHART_COPY = {
   realmeye: {
-    title: "Active Players Over Time",
+    title: "RotMG Active Players Over Time",
     subtitle: "Amount of players seen in the past two weeks.",
   },
   realmstock: {
-    title: "Max Online Players Over Time",
+    title: "RotMG Max Online Players Over Time",
     subtitle: "Maximum number of players logged in at any point each day.",
     smoothedSubtitle: "7-day rolling average of daily max live players.",
   },
   launcher: {
-    title: "Launcher Loads Per Day",
+    title: "RotMG Launcher Loads Per Day",
     subtitle: "Total number of times the game launcher was opened each day.",
     smoothedSubtitle: "7-day rolling average of total launcher loads per day.",
   },
