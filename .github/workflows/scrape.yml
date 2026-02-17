@@ -95,7 +95,19 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: baseline-csv
-          path: .
+          path: data
+
+      - name: Normalize baseline CSV paths
+        run: |
+          mkdir -p data
+          for file in realmeye-full.csv realmstock-full.csv launcher-full.csv; do
+            if [ -f "$file" ] && [ ! -f "data/$file" ]; then
+              mv "$file" "data/$file"
+            fi
+            if [ -f "data/baseline-csv/$file" ] && [ ! -f "data/$file" ]; then
+              mv "data/baseline-csv/$file" "data/$file"
+            fi
+          done
 
       - name: Scrape ${{ matrix.source }} (strict)
         run: bun run scripts/scrape.ts --source "${{ matrix.source }}" --strict
@@ -131,14 +143,35 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: baseline-csv
-          path: .
+          path: data
 
       - name: Download updated CSV artifacts
         uses: actions/download-artifact@v4
         with:
           pattern: csv-*
           merge-multiple: true
-          path: .
+          path: data
+
+      - name: Normalize updated CSV paths
+        run: |
+          mkdir -p data
+          for file in realmeye-full.csv realmstock-full.csv launcher-full.csv; do
+            if [ -f "$file" ] && [ ! -f "data/$file" ]; then
+              mv "$file" "data/$file"
+            fi
+            if [ -f "data/baseline-csv/$file" ] && [ ! -f "data/$file" ]; then
+              mv "data/baseline-csv/$file" "data/$file"
+            fi
+            if [ -f "data/csv-realmeye/$file" ] && [ ! -f "data/$file" ]; then
+              mv "data/csv-realmeye/$file" "data/$file"
+            fi
+            if [ -f "data/csv-realmstock/$file" ] && [ ! -f "data/$file" ]; then
+              mv "data/csv-realmstock/$file" "data/$file"
+            fi
+            if [ -f "data/csv-launcher/$file" ] && [ ! -f "data/$file" ]; then
+              mv "data/csv-launcher/$file" "data/$file"
+            fi
+          done
 
       - name: Upload CSV assets
         env:
