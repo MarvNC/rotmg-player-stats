@@ -13,6 +13,8 @@ export type TableRow = DailyPoint & {
   launcher_delta: number | null;
 };
 
+const MAX_DELTA_GAP_DAYS = 7;
+
 function latestValue(points: DailyPoint[]): number | null {
   for (let index = points.length - 1; index >= 0; index -= 1) {
     const point = points[index];
@@ -63,20 +65,64 @@ export function buildStats(points: DailyPoint[]): StatsSummary {
 }
 
 export function buildTableRows(points: DailyPoint[]): TableRow[] {
-  return points.map((point, index) => {
-    const previousRealmeye = points[index - 1]?.realmeye_max ?? null;
-    const currentRealmeye = point.realmeye_max;
-    const previousRealmstock = points[index - 1]?.realmstock_max ?? null;
-    const currentRealmstock = point.realmstock_max;
-    const previousLauncher = points[index - 1]?.launcher_loads ?? null;
-    const currentLauncher = point.launcher_loads;
+  const dayMs = 24 * 60 * 60 * 1000;
 
+  const computeDelta = (index: number, pick: (point: DailyPoint) => number | null): number | null => {
+    const currentPoint = points[index];
+    if (!currentPoint) {
+      return null;
+    }
+
+    const currentValue = pick(currentPoint);
+    if (currentValue == null) {
+      return null;
+    }
+
+    let previousIndex = index - 1;
+    while (previousIndex >= 0) {
+      const previousPoint = points[previousIndex];
+      if (!previousPoint) {
+        break;
+      }
+
+      const previousValue = pick(previousPoint);
+      if (previousValue == null) {
+        previousIndex -= 1;
+        continue;
+      }
+
+      const currentDateMs = Date.parse(`${currentPoint.date}T00:00:00Z`);
+      const previousDateMs = Date.parse(`${previousPoint.date}T00:00:00Z`);
+      if (!Number.isFinite(currentDateMs) || !Number.isFinite(previousDateMs)) {
+        return null;
+      }
+
+      const dayGap = Math.round((currentDateMs - previousDateMs) / dayMs);
+      if (dayGap <= 0) {
+        return null;
+      }
+
+      const totalDelta = currentValue - previousValue;
+      if (dayGap === 1) {
+        return totalDelta;
+      }
+
+      if (dayGap > MAX_DELTA_GAP_DAYS) {
+        return null;
+      }
+
+      return Math.round(totalDelta / dayGap);
+    }
+
+    return null;
+  };
+
+  return points.map((point, index) => {
     return {
       ...point,
-      realmeye_delta: currentRealmeye == null || previousRealmeye == null ? null : currentRealmeye - previousRealmeye,
-      realmstock_delta:
-        currentRealmstock == null || previousRealmstock == null ? null : currentRealmstock - previousRealmstock,
-      launcher_delta: currentLauncher == null || previousLauncher == null ? null : currentLauncher - previousLauncher,
+      realmeye_delta: computeDelta(index, (item) => item.realmeye_max),
+      realmstock_delta: computeDelta(index, (item) => item.realmstock_max),
+      launcher_delta: computeDelta(index, (item) => item.launcher_loads),
     };
   });
 }
