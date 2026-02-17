@@ -67,8 +67,8 @@ function smoothWeekly(values: Array<number | null>): Array<number | null> {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>("charts");
-  const [preset, setPreset] = useState<RangePreset>("ALL");
-  const [range, setRange] = useState<DateRange>(() => resolvePresetRange(data, "ALL"));
+  const [preset, setPreset] = useState<RangePreset>("2Y");
+  const [range, setRange] = useState<DateRange>(() => resolvePresetRange(data, "2Y"));
   const [expandedChart, setExpandedChart] = useState<ExpandedChart>(null);
   const [isRealmstockWeeklySmoothOn, setIsRealmstockWeeklySmoothOn] = useState(true);
   const [isLauncherWeeklySmoothOn, setIsLauncherWeeklySmoothOn] = useState(true);

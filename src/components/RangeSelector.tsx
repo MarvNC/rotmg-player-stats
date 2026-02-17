@@ -6,7 +6,7 @@ type RangeSelectorProps = {
   onSelect: (preset: RangePreset) => void;
 };
 
-const PRESETS: RangePreset[] = ["1M", "6M", "1Y", "ALL"];
+const PRESETS: RangePreset[] = ["1M", "6M", "1Y", "2Y", "ALL"];
 
 export function RangeSelector({ active, onSelect }: RangeSelectorProps) {
   return (

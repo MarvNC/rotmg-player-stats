@@ -1,6 +1,6 @@
 import type { DailyPoint, DateRange } from "../types";
 
-export type RangePreset = "1M" | "6M" | "1Y" | "ALL";
+export type RangePreset = "1M" | "6M" | "1Y" | "2Y" | "ALL";
 
 function shiftDate(date: string, years = 0, months = 0): string {
   const parsed = new Date(`${date}T00:00:00Z`);
@@ -24,6 +24,10 @@ export function resolvePresetRange(points: DailyPoint[], preset: RangePreset): D
 
   if (preset === "1Y") {
     return { start: shiftDate(end, -1, 0), end };
+  }
+
+  if (preset === "2Y") {
+    return { start: shiftDate(end, -2, 0), end };
   }
 
   if (preset === "6M") {
