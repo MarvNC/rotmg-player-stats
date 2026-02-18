@@ -6,6 +6,7 @@ export type DailyPoint = {
 };
 
 export type CompactDaily = {
+  u?: string;
   d: string[];
   a: Array<number | null>;
   c: Array<number | null>;
