@@ -183,3 +183,22 @@ jobs:
           fi
 
           gh release upload "$TARGET_TAG" -R "${{ github.repository }}" data/realmeye-full.csv data/realmstock-full.csv data/launcher-full.csv --clobber
+
+      - name: Aggregate daily JSON
+        run: bun run aggregate
+
+      - name: Publish daily.json to data branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          DATA_DIR="$(mktemp -d)"
+          cp src/data/daily.json "$DATA_DIR/daily.json"
+
+          git init "$DATA_DIR"
+          git -C "$DATA_DIR" checkout -b data
+          git -C "$DATA_DIR" config user.name "github-actions[bot]"
+          git -C "$DATA_DIR" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$DATA_DIR" add daily.json
+          git -C "$DATA_DIR" commit -m "chore(data): publish daily snapshot"
+          git -C "$DATA_DIR" remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+          git -C "$DATA_DIR" push --force origin data

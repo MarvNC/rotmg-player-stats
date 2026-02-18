@@ -22,7 +22,7 @@ bun run dev
 
 - `bun run scrape` - Scrape RealmEye and RealmStock and append CSV rows.
 - `bun run scrape:dry-run` - Validate live fetch/parsing without appending CSV rows.
-- `bun run aggregate` - Aggregate full CSV files into `src/data/daily.json`.
+- `bun run aggregate` - Aggregate full CSV files into `src/data/daily.json` (CI publishes this as `daily.json` on the `data` branch).
 - `bun run migrate:realmeye` - Convert the historical source CSV into release-format CSV.
 - `bun run migrate:realmstock` - Convert RealmStock historical source CSV into release-format CSV.
 - `bun run test` - Run unit tests.

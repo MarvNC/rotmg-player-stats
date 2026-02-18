@@ -5,7 +5,7 @@
 - React + Vite + TypeScript
 - Charts: uPlot
 - Table: TanStack Table + TanStack Virtual
-- Runtime artifact consumed by frontend: `src/data/daily.json`
+- Runtime artifact consumed by frontend: `https://raw.githubusercontent.com/MarvNC/rotmg-player-stats/data/daily.json`
 
 ## Setup
 
@@ -28,7 +28,8 @@ bun install
   - `data/realmeye-full.csv`
   - `data/realmstock-full.csv`
   - `data/launcher-full.csv`
-- Aggregated output: `src/data/daily.json`
+- Aggregated output (generated in CI): `src/data/daily.json`
+- Published runtime snapshot: `daily.json` on `data` branch
 
 Compact JSON mapping:
 
@@ -40,14 +41,11 @@ Compact JSON mapping:
 Notes:
 
 - `launcher_loads` is derived from cumulative launcher views using interpolation with a 48h gap guard.
-- App is static and reads only committed `src/data/daily.json` at runtime.
+- App fetches runtime data from `raw.githubusercontent.com` (the `data` branch snapshot).
 
 ## Workflows
 
 - Hourly scrape: `.github/workflows/scrape.yml`
   - Schedule: `0 * * * *`
   - Downloads latest dated release CSVs, scrapes each source, uploads merged CSVs to today's tag.
-
-- Daily aggregate: `.github/workflows/aggregate-daily.yml`
-  - Schedule: `55 23 * * *`
-  - Downloads latest dated release CSVs, rebuilds `src/data/daily.json`, commits only when changed.
+  - Rebuilds `src/data/daily.json` and force-pushes `daily.json` to the `data` branch.

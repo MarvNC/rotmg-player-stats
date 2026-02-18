@@ -9,3 +9,6 @@ coverage/
 
 # Local/source CSV artifacts
 *.csv
+
+# Runtime aggregate is published to data branch
+src/data/daily.json

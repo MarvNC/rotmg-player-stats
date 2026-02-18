@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { Github, LineChart, MonitorCog, Moon, Sun, Table2, X } from "lucide-react";
-import compactData from "./data/daily.json";
+import { AppSkeleton } from "./components/AppSkeleton";
 import { DataTable } from "./components/DataTable";
 import { PlayerChart } from "./components/PlayerChart";
 import { RangeSelector } from "./components/RangeSelector";
 import { SharedRangeSlider } from "./components/SharedRangeSlider";
 import { StatsCards } from "./components/StatsCards";
-import type { CompactDaily, DateRange } from "./types";
+import { useDailyData } from "./hooks/useDailyData";
+import type { DateRange } from "./types";
 import { filterByRange, resolvePresetRange, type RangePreset } from "./utils/dateRange";
-import { decodeDailyData } from "./utils/decodeDailyData";
 import { buildStats, buildTableRows } from "./utils/metrics";
 
 type Tab = "charts" | "table";
@@ -37,9 +37,6 @@ const SITE_URL = "https://rotmg-stats.maarv.dev/";
 const GITHUB_PROFILE_URL = "https://github.com/MarvNC";
 const GITHUB_REPO_URL = "https://github.com/MarvNC/rotmg-player-stats";
 
-const data = decodeDailyData(compactData as CompactDaily).sort((a, b) => a.date.localeCompare(b.date));
-const allDates = data.map((item) => item.date);
-
 function smoothWeekly(values: Array<number | null>): Array<number | null> {
   const windowDays = 7;
   const smoothed: Array<number | null> = [];
@@ -66,9 +63,11 @@ function smoothWeekly(values: Array<number | null>): Array<number | null> {
 }
 
 export default function App() {
+  const { data, isLoading, error, retry } = useDailyData();
   const [activeTab, setActiveTab] = useState<Tab>("charts");
   const [preset, setPreset] = useState<RangePreset>("2Y");
-  const [range, setRange] = useState<DateRange>(() => resolvePresetRange(data, "2Y"));
+  const [range, setRange] = useState<DateRange>(() => resolvePresetRange([], "2Y"));
+  const [hasRangeOverride, setHasRangeOverride] = useState(false);
   const [expandedChart, setExpandedChart] = useState<ExpandedChart>(null);
   const [isRealmstockWeeklySmoothOn, setIsRealmstockWeeklySmoothOn] = useState(true);
   const [isLauncherWeeklySmoothOn, setIsLauncherWeeklySmoothOn] = useState(true);
@@ -88,8 +87,17 @@ export default function App() {
     return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   });
 
-  const filtered = useMemo(() => filterByRange(data, range), [range]);
-  const stats = useMemo(() => buildStats(data), []);
+  const allDates = useMemo(() => data.map((item) => item.date), [data]);
+  const effectiveRange = useMemo(() => {
+    if (data.length === 0) {
+      return range;
+    }
+
+    return hasRangeOverride ? range : resolvePresetRange(data, preset);
+  }, [data, hasRangeOverride, preset, range]);
+
+  const filtered = useMemo(() => filterByRange(data, effectiveRange), [data, effectiveRange]);
+  const stats = useMemo(() => buildStats(data), [data]);
 
   const tableRows = useMemo(() => buildTableRows(filtered), [filtered]);
 
@@ -250,169 +258,192 @@ export default function App() {
       </header>
 
       <main className="page-container">
-        <StatsCards stats={stats} />
-
-        <section className="panel controls-panel">
-          <div className="tabs" role="tablist" aria-label="View switcher">
-            <button
-              role="tab"
-              aria-selected={activeTab === "charts"}
-              className={`tab-button${activeTab === "charts" ? " active" : ""}`}
-              onClick={() => setActiveTab("charts")}
-            >
-              <LineChart size={15} aria-hidden="true" />
-              Charts
+        {isLoading ? (
+          <AppSkeleton />
+        ) : error != null ? (
+          <section className="panel error-state" role="alert" aria-live="assertive">
+            <h2>Data unavailable</h2>
+            <p>{error}</p>
+            <button type="button" className="outline-button" onClick={retry}>
+              Retry
             </button>
-            <button
-              role="tab"
-              aria-selected={activeTab === "table"}
-              className={`tab-button${activeTab === "table" ? " active" : ""}`}
-              onClick={() => setActiveTab("table")}
-            >
-              <Table2 size={15} aria-hidden="true" />
-              Data Table
-            </button>
-          </div>
-
-          <RangeSelector
-            active={preset}
-            onSelect={(nextPreset) => {
-              setPreset(nextPreset);
-              setRange(resolvePresetRange(data, nextPreset));
-            }}
-          />
-        </section>
-
-        {activeTab === "charts" ? (
-          <section className="charts-stack">
-            <SharedRangeSlider
-              dates={allDates}
-              range={range}
-              onChange={(nextRange) => {
-                setPreset("ALL");
-                setRange(nextRange);
-              }}
-            />
-
-            <PlayerChart
-              title={CHART_COPY.realmeye.title}
-              subtitle={CHART_COPY.realmeye.subtitle}
-              shareUrl={SITE_URL}
-              dates={realmeyeDates}
-              maxValues={realmeyeMax}
-              theme={resolvedTheme}
-              range={range}
-              syncKey="rotmg-sync"
-              onPopOut={() => setExpandedChart("realmeye")}
-            />
-
-            <PlayerChart
-              title={CHART_COPY.realmstock.title}
-              subtitle={realmstockSubtitle}
-              shareUrl={SITE_URL}
-              dates={realmstockDates}
-              maxValues={isRealmstockWeeklySmoothOn ? realmstockSmoothedMax : realmstockMax}
-              tooltipValueLabel="players online"
-              theme={resolvedTheme}
-              range={range}
-              syncKey="rotmg-sync"
-              headerControls={renderWeeklySmoothingToggle(CHART_COPY.realmstock.title, isRealmstockWeeklySmoothOn, () =>
-                setIsRealmstockWeeklySmoothOn((current) => !current)
-              )}
-              onPopOut={() => setExpandedChart("realmstock")}
-            />
-
-            <PlayerChart
-              title={CHART_COPY.launcher.title}
-              subtitle={launcherSubtitle}
-              shareUrl={SITE_URL}
-              dates={launcherDates}
-              maxValues={isLauncherWeeklySmoothOn ? launcherSmoothedLoads : launcherLoads}
-              tooltipValueLabel="loads"
-              theme={resolvedTheme}
-              range={range}
-              syncKey="rotmg-sync"
-              headerControls={renderWeeklySmoothingToggle(CHART_COPY.launcher.title, isLauncherWeeklySmoothOn, () =>
-                setIsLauncherWeeklySmoothOn((current) => !current)
-              )}
-              onPopOut={() => setExpandedChart("launcher")}
-            />
           </section>
         ) : (
-          <DataTable rows={tableRows} />
-        )}
+          <>
+            <StatsCards stats={stats} />
 
-        {expandedChart != null && expandedChartTitle != null ? (
-          <div className="chart-modal-backdrop" role="presentation" onClick={() => setExpandedChart(null)}>
-            <div
-              className="chart-modal"
-              role="dialog"
-              aria-modal="true"
-              aria-label={`${expandedChartTitle} expanded view`}
-              onClick={(event) => event.stopPropagation()}
-            >
-              <div className="chart-modal-header">
-                <button type="button" className="outline-button" onClick={() => setExpandedChart(null)}>
-                  <X size={14} aria-hidden="true" />
-                  Close
+            <section className="panel controls-panel">
+              <div className="tabs" role="tablist" aria-label="View switcher">
+                <button
+                  role="tab"
+                  aria-selected={activeTab === "charts"}
+                  className={`tab-button${activeTab === "charts" ? " active" : ""}`}
+                  onClick={() => setActiveTab("charts")}
+                >
+                  <LineChart size={15} aria-hidden="true" />
+                  Charts
+                </button>
+                <button
+                  role="tab"
+                  aria-selected={activeTab === "table"}
+                  className={`tab-button${activeTab === "table" ? " active" : ""}`}
+                  onClick={() => setActiveTab("table")}
+                >
+                  <Table2 size={15} aria-hidden="true" />
+                  Data Table
                 </button>
               </div>
 
-              <SharedRangeSlider
-                dates={allDates}
-                range={range}
-                onChange={(nextRange) => {
-                  setPreset("ALL");
-                  setRange(nextRange);
+              <RangeSelector
+                active={preset}
+                onSelect={(nextPreset) => {
+                  setHasRangeOverride(true);
+                  setPreset(nextPreset);
+                  setRange(resolvePresetRange(data, nextPreset));
                 }}
               />
+            </section>
 
-              <PlayerChart
-                title={expandedChartTitle}
-                subtitle={expandedChartSubtitle ?? undefined}
-                shareUrl={SITE_URL}
-                dates={
-                  expandedChart === "realmeye"
-                    ? realmeyeDates
-                    : expandedChart === "realmstock"
-                      ? realmstockDates
-                      : launcherDates
-                }
-                maxValues={
-                  expandedChart === "realmeye"
-                    ? realmeyeMax
-                    : expandedChart === "realmstock"
-                      ? isRealmstockWeeklySmoothOn
-                        ? realmstockSmoothedMax
-                        : realmstockMax
-                      : isLauncherWeeklySmoothOn
-                        ? launcherSmoothedLoads
-                        : launcherLoads
-                }
-                tooltipValueLabel={
-                  expandedChart === "realmstock" ? "players online" : expandedChart === "launcher" ? "loads" : "players"
-                }
-                theme={resolvedTheme}
-                range={range}
-                syncKey="rotmg-modal-sync"
-                height={460}
-                minHeightRatio={0.5}
-                enableExport
-                headerControls={
-                  expandedChart === "realmstock"
-                    ? renderWeeklySmoothingToggle(CHART_COPY.realmstock.title, isRealmstockWeeklySmoothOn, () =>
-                        setIsRealmstockWeeklySmoothOn((current) => !current)
-                      )
-                    : expandedChart === "launcher"
-                      ? renderWeeklySmoothingToggle(CHART_COPY.launcher.title, isLauncherWeeklySmoothOn, () =>
-                          setIsLauncherWeeklySmoothOn((current) => !current)
-                        )
-                      : null
-                }
-              />
-            </div>
-          </div>
-        ) : null}
+            {activeTab === "charts" ? (
+              <section className="charts-stack">
+                <SharedRangeSlider
+                  dates={allDates}
+                  range={effectiveRange}
+                  onChange={(nextRange) => {
+                    setHasRangeOverride(true);
+                    setPreset("ALL");
+                    setRange(nextRange);
+                  }}
+                />
+
+                <PlayerChart
+                  title={CHART_COPY.realmeye.title}
+                  subtitle={CHART_COPY.realmeye.subtitle}
+                  shareUrl={SITE_URL}
+                  dates={realmeyeDates}
+                  maxValues={realmeyeMax}
+                  theme={resolvedTheme}
+                  range={effectiveRange}
+                  syncKey="rotmg-sync"
+                  onPopOut={() => setExpandedChart("realmeye")}
+                />
+
+                <PlayerChart
+                  title={CHART_COPY.realmstock.title}
+                  subtitle={realmstockSubtitle}
+                  shareUrl={SITE_URL}
+                  dates={realmstockDates}
+                  maxValues={isRealmstockWeeklySmoothOn ? realmstockSmoothedMax : realmstockMax}
+                  tooltipValueLabel="players online"
+                  theme={resolvedTheme}
+                  range={effectiveRange}
+                  syncKey="rotmg-sync"
+                  headerControls={renderWeeklySmoothingToggle(
+                    CHART_COPY.realmstock.title,
+                    isRealmstockWeeklySmoothOn,
+                    () => setIsRealmstockWeeklySmoothOn((current) => !current)
+                  )}
+                  onPopOut={() => setExpandedChart("realmstock")}
+                />
+
+                <PlayerChart
+                  title={CHART_COPY.launcher.title}
+                  subtitle={launcherSubtitle}
+                  shareUrl={SITE_URL}
+                  dates={launcherDates}
+                  maxValues={isLauncherWeeklySmoothOn ? launcherSmoothedLoads : launcherLoads}
+                  tooltipValueLabel="loads"
+                  theme={resolvedTheme}
+                  range={effectiveRange}
+                  syncKey="rotmg-sync"
+                  headerControls={renderWeeklySmoothingToggle(CHART_COPY.launcher.title, isLauncherWeeklySmoothOn, () =>
+                    setIsLauncherWeeklySmoothOn((current) => !current)
+                  )}
+                  onPopOut={() => setExpandedChart("launcher")}
+                />
+              </section>
+            ) : (
+              <DataTable rows={tableRows} />
+            )}
+
+            {expandedChart != null && expandedChartTitle != null ? (
+              <div className="chart-modal-backdrop" role="presentation" onClick={() => setExpandedChart(null)}>
+                <div
+                  className="chart-modal"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label={`${expandedChartTitle} expanded view`}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <div className="chart-modal-header">
+                    <button type="button" className="outline-button" onClick={() => setExpandedChart(null)}>
+                      <X size={14} aria-hidden="true" />
+                      Close
+                    </button>
+                  </div>
+
+                  <SharedRangeSlider
+                    dates={allDates}
+                    range={effectiveRange}
+                    onChange={(nextRange) => {
+                      setHasRangeOverride(true);
+                      setPreset("ALL");
+                      setRange(nextRange);
+                    }}
+                  />
+
+                  <PlayerChart
+                    title={expandedChartTitle}
+                    subtitle={expandedChartSubtitle ?? undefined}
+                    shareUrl={SITE_URL}
+                    dates={
+                      expandedChart === "realmeye"
+                        ? realmeyeDates
+                        : expandedChart === "realmstock"
+                          ? realmstockDates
+                          : launcherDates
+                    }
+                    maxValues={
+                      expandedChart === "realmeye"
+                        ? realmeyeMax
+                        : expandedChart === "realmstock"
+                          ? isRealmstockWeeklySmoothOn
+                            ? realmstockSmoothedMax
+                            : realmstockMax
+                          : isLauncherWeeklySmoothOn
+                            ? launcherSmoothedLoads
+                            : launcherLoads
+                    }
+                    tooltipValueLabel={
+                      expandedChart === "realmstock"
+                        ? "players online"
+                        : expandedChart === "launcher"
+                          ? "loads"
+                          : "players"
+                    }
+                    theme={resolvedTheme}
+                    range={effectiveRange}
+                    syncKey="rotmg-modal-sync"
+                    height={460}
+                    minHeightRatio={0.5}
+                    enableExport
+                    headerControls={
+                      expandedChart === "realmstock"
+                        ? renderWeeklySmoothingToggle(CHART_COPY.realmstock.title, isRealmstockWeeklySmoothOn, () =>
+                            setIsRealmstockWeeklySmoothOn((current) => !current)
+                          )
+                        : expandedChart === "launcher"
+                          ? renderWeeklySmoothingToggle(CHART_COPY.launcher.title, isLauncherWeeklySmoothOn, () =>
+                              setIsLauncherWeeklySmoothOn((current) => !current)
+                            )
+                          : null
+                    }
+                  />
+                </div>
+              </div>
+            ) : null}
+          </>
+        )}
       </main>
 
       <footer className="app-footer">
