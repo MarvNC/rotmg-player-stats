@@ -10,6 +10,7 @@ type DailyAggregate = {
 };
 
 type CompactDaily = {
+  u: string;
   d: string[];
   a: Array<number | null>;
   c: Array<number | null>;
@@ -286,8 +287,9 @@ function compactDate(date: string): string {
   return date.replace(/-/g, "");
 }
 
-function toCompactDaily(points: DailyAggregate[]): CompactDaily {
+function toCompactDaily(points: DailyAggregate[], updatedAt: string): CompactDaily {
   return {
+    u: updatedAt,
     d: points.map((point) => compactDate(point.date)),
     a: points.map((point) => point.realmeye_max),
     c: points.map((point) => point.realmstock_max),
@@ -306,7 +308,7 @@ function run(): void {
     aggregateMaxByDate(realmstockRows),
     aggregateLauncherLoads(launcherRows)
   );
-  const compact = toCompactDaily(merged);
+  const compact = toCompactDaily(merged, new Date().toISOString());
 
   mkdirSync(resolve(ROOT, "src", "data"), { recursive: true });
   writeFileSync(OUTPUT_FILE, `${JSON.stringify(compact)}\n`, "utf8");

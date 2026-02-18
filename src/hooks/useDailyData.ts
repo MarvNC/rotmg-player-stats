@@ -6,6 +6,7 @@ const DEFAULT_DAILY_DATA_URL = "https://raw.githubusercontent.com/MarvNC/rotmg-p
 
 type UseDailyDataResult = {
   data: DailyPoint[];
+  lastUpdatedAt: string | null;
   isLoading: boolean;
   error: string | null;
   retry: () => void;
@@ -18,6 +19,7 @@ function resolveDailyDataUrl(): string {
 
 export function useDailyData(): UseDailyDataResult {
   const [data, setData] = useState<DailyPoint[]>([]);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [requestKey, setRequestKey] = useState(0);
@@ -45,8 +47,18 @@ export function useDailyData(): UseDailyDataResult {
 
         const compactData = (await response.json()) as CompactDaily;
         const decodedData = decodeDailyData(compactData).sort((a, b) => a.date.localeCompare(b.date));
+        const payloadUpdatedAt = typeof compactData.u === "string" ? compactData.u : null;
+        const payloadUpdatedAtTimestamp = payloadUpdatedAt == null ? Number.NaN : Date.parse(payloadUpdatedAt);
+        const lastModifiedHeader = response.headers.get("last-modified");
+        const lastModifiedTimestamp = lastModifiedHeader == null ? Number.NaN : Date.parse(lastModifiedHeader);
+        const resolvedLastUpdatedAt = Number.isFinite(payloadUpdatedAtTimestamp)
+          ? new Date(payloadUpdatedAtTimestamp).toISOString()
+          : Number.isFinite(lastModifiedTimestamp)
+            ? new Date(lastModifiedTimestamp).toISOString()
+            : null;
 
         setData(decodedData);
+        setLastUpdatedAt(resolvedLastUpdatedAt);
       } catch (errorValue) {
         if (abortController.signal.aborted) {
           return;
@@ -54,6 +66,7 @@ export function useDailyData(): UseDailyDataResult {
 
         const message = errorValue instanceof Error ? errorValue.message : "Failed to load daily data.";
         setError(message);
+        setLastUpdatedAt(null);
       } finally {
         if (!abortController.signal.aborted) {
           setIsLoading(false);
@@ -68,5 +81,5 @@ export function useDailyData(): UseDailyDataResult {
     };
   }, [requestKey]);
 
-  return { data, isLoading, error, retry };
+  return { data, lastUpdatedAt, isLoading, error, retry };
 }

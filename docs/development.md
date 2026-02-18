@@ -33,6 +33,7 @@ bun install
 
 Compact JSON mapping:
 
+- `u`: aggregate update timestamp (ISO 8601 UTC)
 - `d`: date (`YYYYMMDD`)
 - `a`: `realmeye_max`
 - `c`: `realmstock_max`

@@ -4,7 +4,7 @@ export type StatsSummary = {
   currentRealmeye: number | null;
   allTimePeak: { value: number | null; date: string | null };
   allTimeLow: { value: number | null; date: string | null };
-  lastUpdatedDate: string | null;
+  lastUpdatedAt: string | null;
 };
 
 export type TableRow = DailyPoint & {
@@ -25,7 +25,17 @@ function latestValue(points: DailyPoint[]): number | null {
   return null;
 }
 
-export function buildStats(points: DailyPoint[]): StatsSummary {
+function resolveFallbackLastUpdatedAt(points: DailyPoint[]): string | null {
+  const latestDate = points[points.length - 1]?.date;
+  if (latestDate == null) {
+    return null;
+  }
+
+  const fallbackTimestamp = Date.parse(`${latestDate}T00:00:00Z`);
+  return Number.isFinite(fallbackTimestamp) ? new Date(fallbackTimestamp).toISOString() : null;
+}
+
+export function buildStats(points: DailyPoint[], lastUpdatedAt: string | null = null): StatsSummary {
   const current = latestValue(points);
 
   let allTimePeak: { value: number | null; date: string | null } = {
@@ -52,13 +62,11 @@ export function buildStats(points: DailyPoint[]): StatsSummary {
     }
   }
 
-  const latestIndex = points.length - 1;
-
   return {
     currentRealmeye: current,
     allTimePeak,
     allTimeLow,
-    lastUpdatedDate: points[latestIndex]?.date ?? null,
+    lastUpdatedAt: lastUpdatedAt ?? resolveFallbackLastUpdatedAt(points),
   };
 }
 
