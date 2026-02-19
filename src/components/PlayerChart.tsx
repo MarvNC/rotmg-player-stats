@@ -21,6 +21,7 @@ type PlayerChartProps = {
   onPopOut?: () => void;
   enableExport?: boolean;
   headerControls?: ReactNode;
+  isYAxisBaselineZero?: boolean;
 };
 
 function toUnixDay(date: string): number {
@@ -97,6 +98,7 @@ export function PlayerChart({
   onPopOut,
   enableExport = false,
   headerControls,
+  isYAxisBaselineZero = false,
 }: PlayerChartProps) {
   const chartShellRef = useRef<HTMLDivElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
@@ -150,6 +152,9 @@ export function PlayerChart({
         },
         y: {
           auto: true,
+          range: isYAxisBaselineZero
+            ? (_: uPlot, _dataMin: number, dataMax: number): [number, number] => [0, Math.max(dataMax, 1)]
+            : undefined,
         },
       },
       axes: [
@@ -320,7 +325,7 @@ export function PlayerChart({
       chart.destroy();
       chartRef.current = null;
     };
-  }, [data, resolveHeight, syncKey, theme, tooltipValueLabel]);
+  }, [data, isYAxisBaselineZero, resolveHeight, syncKey, theme, tooltipValueLabel]);
 
   useEffect(() => {
     if (!chartRef.current || data[0].length === 0) {

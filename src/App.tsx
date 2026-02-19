@@ -69,6 +69,9 @@ export default function App() {
   const [range, setRange] = useState<DateRange>(() => resolvePresetRange([], "2Y"));
   const [hasRangeOverride, setHasRangeOverride] = useState(false);
   const [expandedChart, setExpandedChart] = useState<ExpandedChart>(null);
+  const [isRealmeyeYAxisZeroOn, setIsRealmeyeYAxisZeroOn] = useState(false);
+  const [isRealmstockYAxisZeroOn, setIsRealmstockYAxisZeroOn] = useState(false);
+  const [isLauncherYAxisZeroOn, setIsLauncherYAxisZeroOn] = useState(false);
   const [isRealmstockWeeklySmoothOn, setIsRealmstockWeeklySmoothOn] = useState(true);
   const [isLauncherWeeklySmoothOn, setIsLauncherWeeklySmoothOn] = useState(true);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
@@ -205,6 +208,23 @@ export default function App() {
       aria-pressed={isActive}
     >
       Weekly Smoothing
+    </button>
+  );
+
+  const renderYAxisBaselineToggle = (chartTitle: string, isActive: boolean, onToggle: () => void) => (
+    <button
+      type="button"
+      className={`inline-flex items-center justify-center min-h-[30px] px-3 py-1.5 text-[0.74rem] font-bold tracking-wide cursor-pointer transition-all duration-130 border rounded-full ${
+        isActive
+          ? "bg-[var(--color-pill-active-bg)] border-[var(--color-pill-active-border)] text-white"
+          : "bg-[color-mix(in_srgb,var(--color-surface-1)_74%,#000000_26%)] border-[var(--color-surface-2)] text-[var(--color-text-main)] hover:border-[rgba(220,40,40,0.6)] hover:bg-[color-mix(in_srgb,var(--color-surface-1)_50%,rgba(220,40,40,0.26)_50%)]"
+      }`}
+      data-export-exclude="true"
+      onClick={onToggle}
+      aria-label={`Y-axis baseline at zero ${isActive ? "on" : "off"} for ${chartTitle}`}
+      aria-pressed={isActive}
+    >
+      Y Min = 0
     </button>
   );
 
@@ -361,6 +381,10 @@ export default function App() {
                   theme={resolvedTheme}
                   range={effectiveRange}
                   syncKey="rotmg-sync"
+                  isYAxisBaselineZero={isRealmeyeYAxisZeroOn}
+                  headerControls={renderYAxisBaselineToggle(CHART_COPY.realmeye.title, isRealmeyeYAxisZeroOn, () =>
+                    setIsRealmeyeYAxisZeroOn((current) => !current)
+                  )}
                   onPopOut={() => setExpandedChart("realmeye")}
                 />
 
@@ -374,11 +398,17 @@ export default function App() {
                   theme={resolvedTheme}
                   range={effectiveRange}
                   syncKey="rotmg-sync"
-                  headerControls={renderWeeklySmoothingToggle(
-                    CHART_COPY.realmstock.title,
-                    isRealmstockWeeklySmoothOn,
-                    () => setIsRealmstockWeeklySmoothOn((current) => !current)
-                  )}
+                  isYAxisBaselineZero={isRealmstockYAxisZeroOn}
+                  headerControls={
+                    <>
+                      {renderYAxisBaselineToggle(CHART_COPY.realmstock.title, isRealmstockYAxisZeroOn, () =>
+                        setIsRealmstockYAxisZeroOn((current) => !current)
+                      )}
+                      {renderWeeklySmoothingToggle(CHART_COPY.realmstock.title, isRealmstockWeeklySmoothOn, () =>
+                        setIsRealmstockWeeklySmoothOn((current) => !current)
+                      )}
+                    </>
+                  }
                   onPopOut={() => setExpandedChart("realmstock")}
                 />
 
@@ -392,9 +422,17 @@ export default function App() {
                   theme={resolvedTheme}
                   range={effectiveRange}
                   syncKey="rotmg-sync"
-                  headerControls={renderWeeklySmoothingToggle(CHART_COPY.launcher.title, isLauncherWeeklySmoothOn, () =>
-                    setIsLauncherWeeklySmoothOn((current) => !current)
-                  )}
+                  isYAxisBaselineZero={isLauncherYAxisZeroOn}
+                  headerControls={
+                    <>
+                      {renderYAxisBaselineToggle(CHART_COPY.launcher.title, isLauncherYAxisZeroOn, () =>
+                        setIsLauncherYAxisZeroOn((current) => !current)
+                      )}
+                      {renderWeeklySmoothingToggle(CHART_COPY.launcher.title, isLauncherWeeklySmoothOn, () =>
+                        setIsLauncherWeeklySmoothOn((current) => !current)
+                      )}
+                    </>
+                  }
                   onPopOut={() => setExpandedChart("launcher")}
                 />
               </section>
@@ -471,16 +509,37 @@ export default function App() {
                     height={460}
                     minHeightRatio={0.5}
                     enableExport
+                    isYAxisBaselineZero={
+                      expandedChart === "realmeye"
+                        ? isRealmeyeYAxisZeroOn
+                        : expandedChart === "realmstock"
+                          ? isRealmstockYAxisZeroOn
+                          : isLauncherYAxisZeroOn
+                    }
                     headerControls={
-                      expandedChart === "realmstock"
-                        ? renderWeeklySmoothingToggle(CHART_COPY.realmstock.title, isRealmstockWeeklySmoothOn, () =>
+                      expandedChart === "realmeye" ? (
+                        renderYAxisBaselineToggle(CHART_COPY.realmeye.title, isRealmeyeYAxisZeroOn, () =>
+                          setIsRealmeyeYAxisZeroOn((current) => !current)
+                        )
+                      ) : expandedChart === "realmstock" ? (
+                        <>
+                          {renderYAxisBaselineToggle(CHART_COPY.realmstock.title, isRealmstockYAxisZeroOn, () =>
+                            setIsRealmstockYAxisZeroOn((current) => !current)
+                          )}
+                          {renderWeeklySmoothingToggle(CHART_COPY.realmstock.title, isRealmstockWeeklySmoothOn, () =>
                             setIsRealmstockWeeklySmoothOn((current) => !current)
-                          )
-                        : expandedChart === "launcher"
-                          ? renderWeeklySmoothingToggle(CHART_COPY.launcher.title, isLauncherWeeklySmoothOn, () =>
-                              setIsLauncherWeeklySmoothOn((current) => !current)
-                            )
-                          : null
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          {renderYAxisBaselineToggle(CHART_COPY.launcher.title, isLauncherYAxisZeroOn, () =>
+                            setIsLauncherYAxisZeroOn((current) => !current)
+                          )}
+                          {renderWeeklySmoothingToggle(CHART_COPY.launcher.title, isLauncherWeeklySmoothOn, () =>
+                            setIsLauncherWeeklySmoothOn((current) => !current)
+                          )}
+                        </>
+                      )
                     }
                   />
                 </div>
