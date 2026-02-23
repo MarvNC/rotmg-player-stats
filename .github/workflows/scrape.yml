@@ -28,79 +28,67 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Resolve tags and prepare baseline
+      - name: Prepare baseline
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bun run baseline:prepare
+
+      - name: Scrape RealmEye (strict)
+        run: bun run scripts/scrape.ts --source realmeye --strict
+
+      - name: Scrape RealmStock (strict)
+        run: bun run scripts/scrape.ts --source realmstock --strict
+
+      - name: Scrape launcher (strict)
+        run: bun run scripts/scrape.ts --source launcher --strict
+
+      - name: Verify CSV growth
+        run: bun run baseline:verify
+
+      - name: Aggregate daily JSON
+        run: bun run aggregate
+
+      - name: Ensure daily release exists
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -euo pipefail
-
           TARGET_TAG="$(date -u +%F)"
-          SOURCE_TAG="$(gh api repos/${{ github.repository }}/releases?per_page=50 --jq '[.[] | select(.draft|not) | select(.prerelease|not) | select(.tag_name | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}$")) | select((.assets | map(.name)) | (index("realmeye-full.csv") != null and index("realmstock-full.csv") != null and index("launcher-full.csv") != null)) | .tag_name] | .[0] // ""')"
-
-          mkdir -p data
-          DOWNLOAD_DIR="$(mktemp -d)"
-          if [ -n "$SOURCE_TAG" ]; then
-            gh release download "$SOURCE_TAG" -R "${{ github.repository }}" -D "$DOWNLOAD_DIR" -p "realmeye-full.csv" -p "realmstock-full.csv" -p "launcher-full.csv" --clobber || true
+          if ! gh release view "$TARGET_TAG" -R "${{ github.repository }}" > /dev/null 2>&1; then
+            gh release create "$TARGET_TAG" -R "${{ github.repository }}" --title "Data $TARGET_TAG" --notes "Automated daily data release."
           fi
-
-          pick_baseline() {
-            local file="$1"
-            local min_size="$2"
-            local downloaded="$DOWNLOAD_DIR/$file"
-            local repo_copy="data/$file"
-
-            if [ -s "$downloaded" ] && [ "$(stat -c%s "$downloaded")" -ge "$min_size" ]; then
-              cp "$downloaded" "$repo_copy"
-              return
-            fi
-
-            if [ -s "$repo_copy" ] && [ "$(stat -c%s "$repo_copy")" -ge "$min_size" ]; then
-              return
-            fi
-
-            echo "Error: unable to find valid baseline for $file"
-            exit 1
-          }
-
-          pick_baseline "realmeye-full.csv" 50000
-          pick_baseline "realmstock-full.csv" 150000
-          pick_baseline "launcher-full.csv" 5000
-
-          echo "TARGET_TAG=$TARGET_TAG" >> "$GITHUB_ENV"
-          echo "Using source release: ${SOURCE_TAG:-repo baseline}"
-          echo "Using target release: $TARGET_TAG"
-
-      - name: Scrape all sources (strict)
-        run: |
-          bun run scripts/scrape.ts --source realmeye --strict
-          bun run scripts/scrape.ts --source realmstock --strict
-          bun run scripts/scrape.ts --source launcher --strict
 
       - name: Upload CSV assets
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if ! gh release view "$TARGET_TAG" -R "${{ github.repository }}" > /dev/null 2>&1; then
-            gh release create "$TARGET_TAG" -R "${{ github.repository }}" --title "Data $TARGET_TAG" --notes "Automated daily data release."
-          fi
-
+          TARGET_TAG="$(date -u +%F)"
           gh release upload "$TARGET_TAG" -R "${{ github.repository }}" data/realmeye-full.csv data/realmstock-full.csv data/launcher-full.csv --clobber
 
-      - name: Aggregate daily JSON
-        run: bun run aggregate
-
-      - name: Publish daily.json to data branch
+      - name: Publish data snapshot to data branch
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           DATA_DIR="$(mktemp -d)"
-          cp src/data/daily.json "$DATA_DIR/daily.json"
+          REMOTE="https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
 
-          git init "$DATA_DIR"
-          git -C "$DATA_DIR" checkout -b data
-          git -C "$DATA_DIR" config user.name "github-actions[bot]"
-          git -C "$DATA_DIR" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git -C "$DATA_DIR" add daily.json
-          git -C "$DATA_DIR" commit -m "chore(data): publish daily snapshot"
-          git -C "$DATA_DIR" remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
-          git -C "$DATA_DIR" push --force origin data
+          if git clone --depth 1 --branch data "$REMOTE" "$DATA_DIR"; then
+            :
+          else
+            git clone --depth 1 "$REMOTE" "$DATA_DIR"
+            git -C "$DATA_DIR" checkout --orphan data
+          fi
+
+          mkdir -p "$DATA_DIR/csv"
+          cp src/data/daily.json "$DATA_DIR/daily.json"
+          cp data/realmeye-full.csv "$DATA_DIR/csv/realmeye-full.csv"
+          cp data/realmstock-full.csv "$DATA_DIR/csv/realmstock-full.csv"
+          cp data/launcher-full.csv "$DATA_DIR/csv/launcher-full.csv"
+
+          git -C "$DATA_DIR" add daily.json csv
+          if git -C "$DATA_DIR" diff --cached --quiet; then
+            echo "No data updates to publish."
+            exit 0
+          fi
+
+          git -C "$DATA_DIR" -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -m "chore(data): publish daily snapshot"
+          git -C "$DATA_DIR" push origin data

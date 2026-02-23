@@ -18,7 +18,9 @@
     "migrate:realmstock": "bun run scripts/migrate-realmstock.ts",
     "migrate:launcher": "bun run scripts/migrate-launcher.ts",
     "scrape": "bun run scripts/scrape.ts",
-    "scrape:dry-run": "bun run scripts/scrape.ts --dry-run"
+    "scrape:dry-run": "bun run scripts/scrape.ts --dry-run",
+    "baseline:prepare": "bun run scripts/prepare-baseline.ts",
+    "baseline:verify": "bun run scripts/verify-growth.ts"
   },
   "dependencies": {
     "@tanstack/react-table": "^8.21.3",
