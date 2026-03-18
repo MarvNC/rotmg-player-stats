@@ -1,157 +1,131 @@
 import { useEffect, useState } from "react";
-import type { LucideProps } from "lucide-react";
 import type { DayComparison, StatsSummary } from "../utils/metrics";
-import { ArrowDown, ArrowDownRight, ArrowUpRight, Minus, Rocket, Trophy, Users } from "lucide-react";
-import type { ForwardRefExoticComponent, RefAttributes } from "react";
+import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 
 type StatsCardsProps = {
   stats: StatsSummary;
 };
 
 const relativeTimeFormatter = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
-const localDateTimeFormatter = new Intl.DateTimeFormat(undefined, {
-  dateStyle: "medium",
-  timeStyle: "long",
-});
 
 function formatNumber(value: number | null): string {
-  if (value == null) {
-    return "—";
-  }
-
+  if (value == null) return "—";
   return Intl.NumberFormat("en-US").format(value);
 }
 
 function formatRelativeLastUpdated(value: string | null, nowTimestamp: number): string {
-  if (value == null) {
-    return "—";
-  }
-
+  if (value == null) return "—";
   const timestamp = Date.parse(value);
-  if (Number.isNaN(timestamp)) {
-    return "—";
-  }
+  if (Number.isNaN(timestamp)) return "—";
 
   const deltaInSeconds = Math.round((timestamp - nowTimestamp) / 1000);
-  const absoluteSeconds = Math.abs(deltaInSeconds);
+  const abs = Math.abs(deltaInSeconds);
 
-  if (absoluteSeconds < 60) {
-    return relativeTimeFormatter.format(deltaInSeconds, "second");
-  }
-
-  const deltaInMinutes = Math.round(deltaInSeconds / 60);
-  if (absoluteSeconds < 60 * 60) {
-    return relativeTimeFormatter.format(deltaInMinutes, "minute");
-  }
-
-  const deltaInHours = Math.round(deltaInSeconds / (60 * 60));
-  if (absoluteSeconds < 24 * 60 * 60) {
-    return relativeTimeFormatter.format(deltaInHours, "hour");
-  }
-
-  const deltaInDays = Math.round(deltaInSeconds / (24 * 60 * 60));
-  if (absoluteSeconds < 30 * 24 * 60 * 60) {
-    return relativeTimeFormatter.format(deltaInDays, "day");
-  }
-
-  const deltaInMonths = Math.round(deltaInDays / 30);
-  if (absoluteSeconds < 365 * 24 * 60 * 60) {
-    return relativeTimeFormatter.format(deltaInMonths, "month");
-  }
-
-  const deltaInYears = Math.round(deltaInDays / 365);
-
-  return relativeTimeFormatter.format(deltaInYears, "year");
+  if (abs < 60) return relativeTimeFormatter.format(deltaInSeconds, "second");
+  const mins = Math.round(deltaInSeconds / 60);
+  if (abs < 3600) return relativeTimeFormatter.format(mins, "minute");
+  const hrs = Math.round(deltaInSeconds / 3600);
+  if (abs < 86400) return relativeTimeFormatter.format(hrs, "hour");
+  const days = Math.round(deltaInSeconds / 86400);
+  if (abs < 2592000) return relativeTimeFormatter.format(days, "day");
+  const months = Math.round(days / 30);
+  if (abs < 31536000) return relativeTimeFormatter.format(months, "month");
+  return relativeTimeFormatter.format(Math.round(days / 365), "year");
 }
 
-function formatLocalLastUpdated(value: string | null): string {
-  if (value == null) {
-    return "—";
-  }
-
-  const timestamp = Date.parse(value);
-  if (Number.isNaN(timestamp)) {
-    return "—";
-  }
-
-  return localDateTimeFormatter.format(new Date(timestamp));
+function isDataFresh(value: string | null, nowTimestamp: number): boolean {
+  if (value == null) return false;
+  const ts = Date.parse(value);
+  return !Number.isNaN(ts) && nowTimestamp - ts < 15 * 60 * 1000;
 }
 
-function DeltaBadge({ delta }: { delta: number | null }) {
-  if (delta == null) {
-    return (
-      <span
-        className="inline-flex items-center gap-1 text-[0.75rem] font-semibold tabular-nums text-[var(--color-text-muted)]"
-        style={{ fontFamily: '"JetBrains Mono", monospace' }}
-        aria-label="No comparison available"
-      >
-        <Minus size={11} aria-hidden="true" />
-        <span>vs yesterday</span>
-      </span>
-    );
-  }
+/** Inline delta: "+1,234" or "−1,234" in emerald or red. No pill, no badge. */
+function InlineDelta({ delta }: { delta: number | null }) {
+  if (delta == null) return null;
 
   const isPositive = delta >= 0;
-  const sign = isPositive ? "+" : "";
   const Icon = isPositive ? ArrowUpRight : ArrowDownRight;
-  const colorClass = isPositive ? "text-[var(--color-emerald)]" : "text-[var(--color-brand-red)]";
+  const formatted = Intl.NumberFormat("en-US").format(Math.abs(delta));
 
   return (
     <span
-      className={`inline-flex items-center gap-1 text-[0.75rem] font-semibold tabular-nums ${colorClass}`}
+      className={`inline-flex items-center gap-0.5 text-[0.72rem] font-semibold tabular-nums ${
+        isPositive ? "text-[var(--color-emerald)]" : "text-[var(--color-brand-red)]"
+      }`}
       style={{ fontFamily: '"JetBrains Mono", monospace' }}
-      aria-label={`${sign}${Intl.NumberFormat("en-US").format(delta)} compared to yesterday`}
+      aria-label={`${isPositive ? "+" : "−"}${formatted} vs yesterday`}
     >
-      <Icon size={11} aria-hidden="true" />
-      <span>
-        {sign}
-        {Intl.NumberFormat("en-US").format(delta)} vs yesterday
-      </span>
+      <Icon size={10} strokeWidth={2.5} aria-hidden="true" />
+      {isPositive ? "+" : "−"}
+      {formatted}
     </span>
   );
 }
 
-type LucideIcon = ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>;
-
-function PrimaryMetricCard({
+/** A single metric datum: label + number + optional inline delta. No card. */
+function Datum({
   label,
-  icon: Icon,
   comparison,
-  unit,
-  animDelay = "0ms",
+  tier,
 }: {
   label: string;
-  icon: LucideIcon;
   comparison: DayComparison;
-  unit?: string;
-  animDelay?: string;
+  tier: "primary" | "secondary";
 }) {
+  const isPrimary = tier === "primary";
+
   return (
-    <article
-      className="border border-[var(--color-surface-2)] rounded-xl bg-[var(--color-surface-1)] p-5 transition-all duration-130 hover:border-[rgba(220,40,40,0.38)] grid gap-3"
-      style={{ animationDelay: animDelay }}
-      aria-label={label}
-    >
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-[var(--color-text-muted)] text-xs uppercase tracking-widest">
-          <Icon size={13} aria-hidden="true" className="text-[var(--color-brand-red)]" />
-          <span>{label}</span>
-        </div>
-        {unit != null ? (
-          <span className="text-[0.7rem] text-[var(--color-text-muted)] uppercase tracking-wider">{unit}</span>
-        ) : null}
-      </div>
-
-      <div
-        className="text-[2.5rem] leading-none font-bold tabular-nums text-[var(--color-text-main)]"
-        style={{ fontFamily: '"JetBrains Mono", monospace' }}
-        aria-label={`Current value: ${formatNumber(comparison.current)}`}
+    <div className="flex flex-col gap-0.5 min-w-0">
+      <span
+        className="text-[0.72rem] uppercase tracking-[0.14em] text-[var(--color-text-muted)] whitespace-nowrap leading-none"
+        style={{ fontFamily: '"Sora", sans-serif' }}
       >
-        {formatNumber(comparison.current)}
+        {label}
+      </span>
+      <div className="flex items-baseline gap-1.5">
+        <span
+          className={`leading-none font-bold tabular-nums ${
+            isPrimary
+              ? "text-[1.35rem] text-[var(--color-text-main)]"
+              : "text-[1.1rem] text-[var(--color-text-main)] opacity-75"
+          }`}
+          style={{ fontFamily: '"JetBrains Mono", monospace' }}
+        >
+          {formatNumber(comparison.current)}
+        </span>
+        <InlineDelta delta={comparison.delta} />
       </div>
+    </div>
+  );
+}
 
-      <DeltaBadge delta={comparison.delta} />
-    </article>
+/** Archival datum: just label + value + date, no delta, rendered smaller. */
+function ArchivalDatum({ label, value, date }: { label: string; value: number | null; date: string | null }) {
+  return (
+    <div className="flex flex-col gap-0.5 min-w-0">
+      <span
+        className="text-[0.7rem] uppercase tracking-[0.14em] text-[var(--color-text-muted)] opacity-70 whitespace-nowrap leading-none"
+        style={{ fontFamily: '"Sora", sans-serif' }}
+      >
+        {label}
+      </span>
+      <div className="flex items-baseline gap-1.5">
+        <span
+          className="text-[1.05rem] leading-none font-semibold tabular-nums text-[var(--color-text-muted)]"
+          style={{ fontFamily: '"JetBrains Mono", monospace' }}
+        >
+          {formatNumber(value)}
+        </span>
+        {date != null && (
+          <span
+            className="text-[0.7rem] text-[var(--color-text-muted)] opacity-60 tabular-nums whitespace-nowrap"
+            style={{ fontFamily: '"JetBrains Mono", monospace' }}
+          >
+            {date}
+          </span>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -159,92 +133,73 @@ export function StatsCards({ stats }: StatsCardsProps) {
   const [nowTimestamp, setNowTimestamp] = useState(() => Date.now());
 
   useEffect(() => {
-    const intervalId = window.setInterval(() => {
-      setNowTimestamp(Date.now());
-    }, 30 * 1000);
-
-    return () => {
-      window.clearInterval(intervalId);
-    };
+    const id = window.setInterval(() => setNowTimestamp(Date.now()), 30_000);
+    return () => window.clearInterval(id);
   }, []);
 
+  const fresh = isDataFresh(stats.lastUpdatedAt, nowTimestamp);
+  const relativeTime = formatRelativeLastUpdated(stats.lastUpdatedAt, nowTimestamp);
+
   return (
-    <section className="grid gap-5" aria-label="Summary statistics">
-      {/* Top row: current realmeye (hero) + update timestamp */}
-      <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 animate-[fade-in-up_400ms_ease_both]">
-        <div>
-          <div className="flex items-center gap-2 text-[var(--color-text-muted)] text-xs uppercase tracking-widest mb-2">
-            <Users size={13} aria-hidden="true" className="text-[var(--color-brand-red)]" />
-            <span>Active Players (RealmEye)</span>
-          </div>
-          <div
-            className="text-[3.5rem] md:text-[4.5rem] leading-none font-bold tabular-nums text-[var(--color-text-main)]"
+    <section
+      className="border-b border-[var(--color-surface-2)] pb-5 animate-[card-enter_400ms_cubic-bezier(0.22,1,0.36,1)_both]"
+      aria-label="Summary statistics"
+    >
+      {/* ── Primary strip ──────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
+        {/* Hero: RealmEye active count — largest, red, no box */}
+        <div className="flex flex-col gap-0.5">
+          <span
+            className="text-[0.72rem] uppercase tracking-[0.14em] text-[var(--color-text-muted)] whitespace-nowrap leading-none"
+            style={{ fontFamily: '"Sora", sans-serif' }}
+          >
+            Active Players · RealmEye
+          </span>
+          <span
+            className="text-[2.6rem] leading-none font-bold tabular-nums text-[var(--color-brand-red)]"
             style={{ fontFamily: '"JetBrains Mono", monospace' }}
-            aria-label={`Current RealmEye count: ${formatNumber(stats.currentRealmeye)}`}
+            aria-label={`RealmEye active players: ${formatNumber(stats.currentRealmeye)}`}
           >
             {formatNumber(stats.currentRealmeye)}
-          </div>
+          </span>
         </div>
 
-        <div className="text-[var(--color-text-muted)] text-sm">
-          <span className="tabular-nums">{formatRelativeLastUpdated(stats.lastUpdatedAt, nowTimestamp)}</span>
-          <span className="mx-2">·</span>
-          <span className="tabular-nums">{formatLocalLastUpdated(stats.lastUpdatedAt)} local time</span>
+        {/* Vertical rule — hidden on tiny screens */}
+        <span className="hidden sm:block self-stretch w-px bg-[var(--color-surface-2)]" aria-hidden="true" />
+
+        {/* Tier-2 metrics: RealmStock + Launcher */}
+        <Datum label="Online Now · RealmStock" comparison={stats.currentRealmstock} tier="primary" />
+        <Datum label="Launcher Loads · 24h" comparison={stats.launcherLoads24h} tier="primary" />
+
+        {/* Push freshness to the far right on wide screens */}
+        <div className="flex items-center gap-1.5 ml-auto shrink-0 pb-0.5">
+          {fresh ? (
+            <span className="relative flex h-1.5 w-1.5" aria-label="Data is live">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-emerald)] opacity-75" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[var(--color-emerald)]" />
+            </span>
+          ) : (
+            <span
+              className="h-1.5 w-1.5 rounded-full bg-[var(--color-text-muted)] opacity-40"
+              aria-label="Data may be stale"
+            />
+          )}
+          <span
+            className="text-[0.7rem] uppercase tracking-[0.1em] text-[var(--color-text-muted)] tabular-nums whitespace-nowrap"
+            style={{ fontFamily: '"JetBrains Mono", monospace' }}
+          >
+            {relativeTime}
+          </span>
         </div>
       </div>
 
-      {/* Primary metric cards: live players + launcher loads, with yesterday delta */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-[fade-in-up_400ms_ease_80ms_both]">
-        <PrimaryMetricCard
-          label="Current Players (RealmStock)"
-          icon={Users}
-          comparison={stats.currentRealmstock}
-          animDelay="80ms"
-        />
-        <PrimaryMetricCard
-          label="Launcher Loads (Past 24h)"
-          icon={Rocket}
-          comparison={stats.launcherLoads24h}
-          unit="loads / day"
-          animDelay="130ms"
-        />
-      </div>
-
-      {/* Secondary cards: all-time records */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-[fade-in-up_400ms_ease_180ms_both]">
-        <article
-          className="border border-[var(--color-surface-2)] rounded-xl bg-[var(--color-surface-1)] p-4 transition-all duration-130 hover:border-[rgba(220,40,40,0.38)]"
-          aria-label="All-time peak player count"
-        >
-          <div className="flex items-center gap-2 text-[var(--color-text-muted)] text-xs uppercase tracking-widest mb-3">
-            <Trophy size={13} aria-hidden="true" className="text-[var(--color-brand-red)]" />
-            <span>All-Time Peak</span>
-          </div>
-          <div
-            className="text-[1.75rem] leading-none font-semibold tabular-nums text-[var(--color-text-main)] mb-2"
-            style={{ fontFamily: '"JetBrains Mono", monospace' }}
-          >
-            {formatNumber(stats.allTimePeak.value)}
-          </div>
-          <div className="text-[var(--color-text-muted)] text-sm tabular-nums">{stats.allTimePeak.date ?? "—"}</div>
-        </article>
-
-        <article
-          className="border border-[var(--color-surface-2)] rounded-xl bg-[var(--color-surface-1)] p-4 transition-all duration-130 hover:border-[rgba(220,40,40,0.38)]"
-          aria-label="All-time low player count"
-        >
-          <div className="flex items-center gap-2 text-[var(--color-text-muted)] text-xs uppercase tracking-widest mb-3">
-            <ArrowDown size={13} aria-hidden="true" className="text-[var(--color-brand-red)]" />
-            <span>All-Time Low</span>
-          </div>
-          <div
-            className="text-[1.75rem] leading-none font-semibold tabular-nums text-[var(--color-text-main)] mb-2"
-            style={{ fontFamily: '"JetBrains Mono", monospace' }}
-          >
-            {formatNumber(stats.allTimeLow.value)}
-          </div>
-          <div className="text-[var(--color-text-muted)] text-sm tabular-nums">{stats.allTimeLow.date ?? "—"}</div>
-        </article>
+      {/* ── Archival strip (all-time records) ─────────────────────── */}
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-1 mt-3">
+        <ArchivalDatum label="All-Time Peak" value={stats.allTimePeak.value} date={stats.allTimePeak.date} />
+        <span className="text-[var(--color-surface-2)] text-xs select-none" aria-hidden="true">
+          ·
+        </span>
+        <ArchivalDatum label="All-Time Low" value={stats.allTimeLow.value} date={stats.allTimeLow.date} />
       </div>
     </section>
   );
