@@ -477,6 +477,13 @@ export default function App() {
             ) : (
               <DataTable
                 rows={tableRows}
+                allDates={allDates}
+                range={effectiveRange}
+                onRangeChange={(nextRange) => {
+                  setHasRangeOverride(true);
+                  setPreset("ALL");
+                  setRange(nextRange);
+                }}
                 onResetRange={() => {
                   setHasRangeOverride(false);
                   setPreset("2Y");

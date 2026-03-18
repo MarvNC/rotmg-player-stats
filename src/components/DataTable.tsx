@@ -1,31 +1,41 @@
 import { useMemo, useRef, useState, type CSSProperties } from "react";
-import { ChevronDown, ChevronUp, Download, Search, Table2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Table2 } from "lucide-react";
 import {
   flexRender,
   getCoreRowModel,
-  getFilteredRowModel,
   getSortedRowModel,
   useReactTable,
   type ColumnDef,
   type SortingState,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import type { DateRange } from "../types";
 import type { TableRow } from "../utils/metrics";
+import { SharedRangeSlider } from "./SharedRangeSlider";
 
 type DataTableProps = {
   rows: TableRow[];
   onResetRange?: () => void;
+  // Range slider props
+  allDates: string[];
+  range: DateRange;
+  onRangeChange: (range: DateRange) => void;
 };
 
-const CSV_HEADERS = [
-  "date",
-  "realmeye_max",
-  "realmstock_max",
-  "launcher_loads",
-  "realmeye_delta",
-  "realmstock_delta",
-  "launcher_delta",
-] as const;
+/** Per-column tooltip descriptions */
+const COLUMN_TOOLTIPS: Record<string, string> = {
+  date: "Calendar date (UTC) for this row of data.",
+  realmeye_max:
+    "Peak concurrent players seen via RealmEye scraping in this 24-hour window. RealmEye counts players visible on the leaderboard in the last two weeks.",
+  realmstock_max: "Maximum number of players logged in at any single point during this day, sourced from RealmStock.",
+  launcher_loads:
+    "Total number of times the game launcher was opened on this day, derived from cumulative launcher view counts.",
+  realmeye_delta: "Day-over-day change in RealmEye peak players. Positive = more active players than the previous day.",
+  realmstock_delta: "Day-over-day change in RealmStock max online. Positive = higher peak than the previous day.",
+  launcher_delta: "Day-over-day change in launcher loads. Positive = more launcher opens than the previous day.",
+};
+
+type TooltipState = { text: string; x: number; y: number } | null;
 
 function numberFormatter(value: number | null): string {
   if (value == null) {
@@ -35,18 +45,16 @@ function numberFormatter(value: number | null): string {
   return Intl.NumberFormat("en-US").format(value);
 }
 
-function escapeCsv(value: string): string {
-  if (!/[",\n]/.test(value)) {
-    return value;
-  }
-
-  return `"${value.replaceAll('"', '""')}"`;
-}
-
-export function DataTable({ rows, onResetRange }: DataTableProps) {
+export function DataTable({ rows, onResetRange, allDates, range, onRangeChange }: DataTableProps) {
   const [sorting, setSorting] = useState<SortingState>([{ id: "date", desc: true }]);
-  const [globalFilter, setGlobalFilter] = useState("");
+  const [activeTooltip, setActiveTooltip] = useState<TooltipState>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
+
+  const showTooltip = (text: string) => (e: React.MouseEvent) => {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setActiveTooltip({ text, x: rect.left + rect.width / 2, y: rect.top - 8 });
+  };
+  const hideTooltip = () => setActiveTooltip(null);
 
   const columns = useMemo<ColumnDef<TableRow>[]>(
     () => [
@@ -99,13 +107,11 @@ export function DataTable({ rows, onResetRange }: DataTableProps) {
             );
           }
 
-          const className =
-            value >= 0
-              ? "inline-block rounded-full px-1.5 py-0.5 text-[0.72rem] text-[#052e16] bg-[#34d399]"
-              : "inline-block rounded-full px-1.5 py-0.5 text-[0.72rem] text-[#fef2f2] bg-[#b91c1c]";
+          const isPositive = value >= 0;
+          const color = isPositive ? "var(--color-emerald)" : "var(--color-brand-red)";
           return (
-            <span className={className} style={{ fontFamily: '"JetBrains Mono", monospace' }}>
-              {value >= 0 ? "+" : ""}
+            <span className="tabular-nums font-medium" style={{ fontFamily: '"JetBrains Mono", monospace', color }}>
+              {isPositive ? "+" : ""}
               {numberFormatter(value)}
             </span>
           );
@@ -124,13 +130,11 @@ export function DataTable({ rows, onResetRange }: DataTableProps) {
             );
           }
 
-          const className =
-            value >= 0
-              ? "inline-block rounded-full px-1.5 py-0.5 text-[0.72rem] text-[#052e16] bg-[#34d399]"
-              : "inline-block rounded-full px-1.5 py-0.5 text-[0.72rem] text-[#fef2f2] bg-[#b91c1c]";
+          const isPositive = value >= 0;
+          const color = isPositive ? "var(--color-emerald)" : "var(--color-brand-red)";
           return (
-            <span className={className} style={{ fontFamily: '"JetBrains Mono", monospace' }}>
-              {value >= 0 ? "+" : ""}
+            <span className="tabular-nums font-medium" style={{ fontFamily: '"JetBrains Mono", monospace', color }}>
+              {isPositive ? "+" : ""}
               {numberFormatter(value)}
             </span>
           );
@@ -149,13 +153,11 @@ export function DataTable({ rows, onResetRange }: DataTableProps) {
             );
           }
 
-          const className =
-            value >= 0
-              ? "inline-block rounded-full px-1.5 py-0.5 text-[0.72rem] text-[#052e16] bg-[#34d399]"
-              : "inline-block rounded-full px-1.5 py-0.5 text-[0.72rem] text-[#fef2f2] bg-[#b91c1c]";
+          const isPositive = value >= 0;
+          const color = isPositive ? "var(--color-emerald)" : "var(--color-brand-red)";
           return (
-            <span className={className} style={{ fontFamily: '"JetBrains Mono", monospace' }}>
-              {value >= 0 ? "+" : ""}
+            <span className="tabular-nums font-medium" style={{ fontFamily: '"JetBrains Mono", monospace', color }}>
+              {isPositive ? "+" : ""}
               {numberFormatter(value)}
             </span>
           );
@@ -168,28 +170,10 @@ export function DataTable({ rows, onResetRange }: DataTableProps) {
   const table = useReactTable({
     data: rows,
     columns,
-    state: {
-      sorting,
-      globalFilter,
-    },
+    state: { sorting },
     onSortingChange: setSorting,
-    onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    globalFilterFn: (row, columnId, filterValue) => {
-      const search = String(filterValue).trim().toLowerCase();
-      if (!search) {
-        return true;
-      }
-
-      const rawValue = row.getValue(columnId);
-      const normalizedValue =
-        typeof rawValue === "string" || typeof rawValue === "number" || typeof rawValue === "boolean"
-          ? String(rawValue)
-          : "";
-      return normalizedValue.toLowerCase().includes(search);
-    },
   });
 
   const tableRows = table.getRowModel().rows;
@@ -201,75 +185,31 @@ export function DataTable({ rows, onResetRange }: DataTableProps) {
     overscan: 10,
   });
 
-  const onExport = () => {
-    const lines = [CSV_HEADERS.join(",")];
-
-    for (const row of tableRows) {
-      const values = CSV_HEADERS.map((key) => {
-        const raw = row.original[key];
-        if (raw == null) {
-          return "";
-        }
-
-        return escapeCsv(String(raw));
-      });
-
-      lines.push(values.join(","));
-    }
-
-    const csvBlob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(csvBlob);
-    link.download = "rotmg-daily-data.csv";
-    link.click();
-    URL.revokeObjectURL(link.href);
-  };
-
   return (
     <section
       className="border border-[var(--color-surface-2)] rounded-xl bg-[var(--color-surface-1)] p-3"
       aria-label="Daily data table"
     >
-      <div className="flex justify-between items-center mb-2.5 gap-3">
-        <h2 className="m-0 text-base inline-flex items-center gap-2">
-          <Table2 size={16} aria-hidden="true" className="text-[var(--color-brand-red)]" />
-          Daily Data
-        </h2>
-
-        <div className="flex items-center gap-2.5">
-          <label
-            className="inline-flex items-center gap-2 px-2.5 py-2 border border-[var(--color-surface-2)] rounded bg-[var(--color-surface-2)] min-w-[220px] focus-within:border-[var(--color-brand-red)] focus-within:shadow-[0_0_0_2px_rgba(220,40,40,0.4)]"
-            htmlFor="table-search-input"
-          >
-            <span className="text-[var(--color-text-muted)] inline-flex items-center" aria-hidden="true">
-              <Search size={14} />
-            </span>
-            <input
-              id="table-search-input"
-              type="search"
-              className="w-full border-0 outline-0 bg-transparent text-[var(--color-text-main)] text-[0.88rem] placeholder:text-[var(--color-text-muted)]"
-              style={{ fontFamily: "Sora, sans-serif" }}
-              value={globalFilter}
-              onChange={(event) => setGlobalFilter(event.target.value)}
-              placeholder="Search rows"
-            />
-          </label>
-
-          <button
-            type="button"
-            className="inline-flex items-center gap-1.5 px-3 py-2 border border-[var(--color-surface-2)] rounded bg-transparent text-[var(--color-text-main)] font-semibold cursor-pointer transition-colors duration-130 hover:bg-[var(--color-surface-2)]"
-            onClick={onExport}
-          >
-            <Download size={14} aria-hidden="true" />
-            Export CSV
-          </button>
-        </div>
+      {/* Range slider */}
+      <div className="mb-3">
+        <SharedRangeSlider dates={allDates} range={range} onChange={onRangeChange} />
       </div>
 
+      {/* Toolbar */}
+      <div className="flex items-center mb-2.5 gap-2">
+        <Table2 size={15} aria-hidden="true" className="text-[var(--color-brand-red)]" />
+        <h2 className="m-0 text-base">Daily Data</h2>
+        <span className="ml-auto text-[0.78rem] text-[var(--color-text-muted)]">
+          {tableRows.length.toLocaleString()} rows
+        </span>
+      </div>
+
+      {/* Grid */}
       <div
         className="h-[64vh] min-h-[420px] border border-[var(--color-border-subtle)] rounded-[10px] overflow-hidden bg-[var(--color-data-grid-bg)] data-grid"
         style={{ "--table-columns": "120px repeat(6, minmax(0, 1fr))" } as CSSProperties}
       >
+        {/* Sticky header row */}
         <div
           className="grid sticky top-0 z-[3] bg-[var(--color-surface-2)] border-b border-[rgba(255,255,255,0.08)]"
           style={{ gridTemplateColumns: "var(--table-columns)" }}
@@ -277,6 +217,7 @@ export function DataTable({ rows, onResetRange }: DataTableProps) {
         >
           {table.getFlatHeaders().map((header) => {
             const sortState = header.column.getIsSorted();
+            const tooltipText = COLUMN_TOOLTIPS[header.column.id];
 
             return (
               <div
@@ -290,7 +231,19 @@ export function DataTable({ rows, onResetRange }: DataTableProps) {
                   style={{ fontFamily: "Sora, sans-serif" }}
                   onClick={header.column.getToggleSortingHandler()}
                 >
-                  <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
+                  <span className="flex items-center gap-1">
+                    {flexRender(header.column.columnDef.header, header.getContext())}
+                    {tooltipText && (
+                      <span
+                        className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-[var(--color-text-muted)] text-[var(--color-text-muted)] text-[0.6rem] font-bold leading-none cursor-help select-none transition-colors duration-120 hover:border-[var(--color-brand-red)] hover:text-[var(--color-brand-red)]"
+                        onMouseEnter={showTooltip(tooltipText)}
+                        onMouseLeave={hideTooltip}
+                        aria-label={tooltipText}
+                      >
+                        ?
+                      </span>
+                    )}
+                  </span>
                   <span
                     className={`inline-flex items-center justify-center w-4 h-4 text-[var(--color-text-muted)] transition-opacity duration-120 ${sortState ? "opacity-100 !text-[var(--color-brand-red)]" : "opacity-0 hover:opacity-100"}`}
                   >
@@ -311,6 +264,7 @@ export function DataTable({ rows, onResetRange }: DataTableProps) {
           })}
         </div>
 
+        {/* Virtualised rows */}
         <div
           ref={viewportRef}
           className="h-[calc(64vh-46px)] min-h-[374px] overflow-auto scrollbar-gutter-stable data-grid-viewport"
@@ -370,6 +324,24 @@ export function DataTable({ rows, onResetRange }: DataTableProps) {
       <p className="my-2.5 mx-0.5 text-[0.78rem] text-[var(--color-text-muted)]">
         Showing {tableRows.length.toLocaleString()} daily rows
       </p>
+
+      {/* Fixed-position tooltip — renders above any overflow:hidden ancestor */}
+      {activeTooltip && (
+        <div
+          style={{
+            position: "fixed",
+            left: activeTooltip.x,
+            top: activeTooltip.y,
+            transform: "translateX(-50%) translateY(-100%)",
+            zIndex: 9999,
+            pointerEvents: "none",
+            fontFamily: "Sora, sans-serif",
+          }}
+          className="max-w-[220px] px-2.5 py-2 rounded-md border border-[var(--color-surface-2)] bg-[var(--color-surface-1)] text-[var(--color-text-main)] text-[0.75rem] leading-relaxed shadow-[0_4px_20px_rgba(0,0,0,0.6)]"
+        >
+          {activeTooltip.text}
+        </div>
+      )}
     </section>
   );
 }
