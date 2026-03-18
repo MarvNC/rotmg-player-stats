@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, type CSSProperties } from "react";
-import { Download, Search, Table2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Download, Search, Table2 } from "lucide-react";
 import {
   flexRender,
   getCoreRowModel,
@@ -14,6 +14,7 @@ import type { TableRow } from "../utils/metrics";
 
 type DataTableProps = {
   rows: TableRow[];
+  onResetRange?: () => void;
 };
 
 const CSV_HEADERS = [
@@ -42,7 +43,7 @@ function escapeCsv(value: string): string {
   return `"${value.replaceAll('"', '""')}"`;
 }
 
-export function DataTable({ rows }: DataTableProps) {
+export function DataTable({ rows, onResetRange }: DataTableProps) {
   const [sorting, setSorting] = useState<SortingState>([{ id: "date", desc: true }]);
   const [globalFilter, setGlobalFilter] = useState("");
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -291,9 +292,18 @@ export function DataTable({ rows }: DataTableProps) {
                 >
                   <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
                   <span
-                    className={`text-[0.66rem] text-[var(--color-text-muted)] transition-opacity duration-120 ${sortState ? "opacity-100 !text-[var(--color-brand-red)]" : "opacity-0 hover:opacity-100"}`}
+                    className={`inline-flex items-center justify-center w-4 h-4 text-[var(--color-text-muted)] transition-opacity duration-120 ${sortState ? "opacity-100 !text-[var(--color-brand-red)]" : "opacity-0 hover:opacity-100"}`}
                   >
-                    {sortState === "asc" ? "^" : sortState === "desc" ? "v" : "^v"}
+                    {sortState === "asc" ? (
+                      <ChevronUp size={14} />
+                    ) : sortState === "desc" ? (
+                      <ChevronDown size={14} />
+                    ) : (
+                      <span className="inline-flex flex-col items-center leading-none">
+                        <ChevronUp size={10} className="-mb-0.5" />
+                        <ChevronDown size={10} className="-mt-0.5" />
+                      </span>
+                    )}
                   </span>
                 </button>
               </div>
@@ -306,37 +316,54 @@ export function DataTable({ rows }: DataTableProps) {
           className="h-[calc(64vh-46px)] min-h-[374px] overflow-auto scrollbar-gutter-stable data-grid-viewport"
           role="rowgroup"
         >
-          <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: "relative" }}>
-            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-              const row = tableRows[virtualRow.index];
-
-              return (
-                <div
-                  key={row.id}
-                  className={`grid hover:bg-[rgba(220,40,40,0.09)] ${virtualRow.index % 2 === 0 ? "bg-[var(--color-panel-highlight)]" : ""}`}
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: "100%",
-                    transform: `translateY(${virtualRow.start}px)`,
-                    gridTemplateColumns: "var(--table-columns)",
-                  }}
-                  role="row"
+          {tableRows.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center gap-4 p-8">
+              <p className="text-[var(--color-text-muted)] text-[0.88rem]">
+                No data for this source in the selected date range.
+              </p>
+              {onResetRange && (
+                <button
+                  type="button"
+                  onClick={onResetRange}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 border border-[var(--color-surface-2)] rounded bg-[var(--color-surface-2)] text-[var(--color-text-main)] font-semibold cursor-pointer transition-colors duration-130 hover:bg-[var(--color-surface-1)] hover:border-[var(--color-brand-red)]"
                 >
-                  {row.getVisibleCells().map((cell) => (
-                    <div
-                      key={cell.id}
-                      role="cell"
-                      className={`px-2 py-2.5 border-b border-[rgba(255,255,255,0.05)] border-r border-r-[rgba(255,255,255,0.06)] text-[0.84rem] text-[var(--color-text-main)] last:border-r-0 ${cell.column.id === "date" ? "" : "text-right"}`}
-                    >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
+                  Reset range
+                </button>
+              )}
+            </div>
+          ) : (
+            <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: "relative" }}>
+              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                const row = tableRows[virtualRow.index];
+
+                return (
+                  <div
+                    key={row.id}
+                    className={`grid hover:bg-[rgba(220,40,40,0.09)] ${virtualRow.index % 2 === 0 ? "bg-[var(--color-panel-highlight)]" : ""}`}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      transform: `translateY(${virtualRow.start}px)`,
+                      gridTemplateColumns: "var(--table-columns)",
+                    }}
+                    role="row"
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <div
+                        key={cell.id}
+                        role="cell"
+                        className={`px-2 py-2.5 border-b border-[rgba(255,255,255,0.05)] border-r border-r-[rgba(255,255,255,0.06)] text-[0.84rem] text-[var(--color-text-main)] last:border-r-0 ${cell.column.id === "date" ? "" : "text-right"}`}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 

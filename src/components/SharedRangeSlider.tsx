@@ -117,10 +117,7 @@ export function SharedRangeSlider({ dates, range, onChange }: SharedRangeSliderP
   };
 
   return (
-    <section
-      className="border border-[var(--color-surface-2)] rounded-xl bg-[var(--color-surface-1)] p-3"
-      aria-label="Global chart range slider"
-    >
+    <section aria-label="Global chart range slider">
       <div className="flex justify-between items-baseline gap-3 mb-3">
         <h3 className="m-0 inline-flex items-center gap-2 text-[0.9rem] uppercase tracking-widest text-[var(--color-text-muted)]">
           <SlidersHorizontal size={14} aria-hidden="true" className="text-[var(--color-brand-red)]" />

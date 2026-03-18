@@ -12,3 +12,6 @@ coverage/
 
 # Runtime aggregate is published to data branch
 src/data/daily.json
+
+# Playwright CLI artifacts
+.playwright-cli/

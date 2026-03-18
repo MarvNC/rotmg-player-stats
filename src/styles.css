@@ -187,15 +187,15 @@ body.modal-open {
 @supports (-moz-appearance: none) {
   .data-grid,
   .data-grid-viewport {
-    scrollbar-width: auto;
+    scrollbar-width: thin;
     scrollbar-color: rgba(220, 40, 40, 0.85) rgba(255, 255, 255, 0.06);
   }
 }
 
 .data-grid::-webkit-scrollbar,
 .data-grid-viewport::-webkit-scrollbar {
-  width: 18px;
-  height: 18px;
+  width: 12px;
+  height: 12px;
 }
 
 .data-grid::-webkit-scrollbar-track,

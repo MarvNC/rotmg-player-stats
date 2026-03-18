@@ -370,8 +370,19 @@ export function PlayerChart({
   if (data[0].length === 0) {
     return (
       <div className="border border-[var(--color-surface-2)] rounded-xl bg-[var(--color-surface-1)] p-2.5 animate-[card-enter_340ms_ease_both]">
-        <div className="min-h-[220px] grid place-items-center text-center text-[var(--color-text-muted)] text-[0.9rem]">
-          No data for this source in the selected date range.
+        <div className="min-h-[220px] grid place-items-center text-center">
+          <div className="text-[var(--color-text-muted)] text-[0.9rem]">
+            <p className="m-0 mb-3">No data for this source in the selected date range.</p>
+            <button
+              type="button"
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent("resetDateRange"));
+              }}
+              className="px-4 py-2 text-[0.85rem] font-semibold text-[var(--color-brand-red)] bg-transparent border border-[rgba(220,40,40,0.45)] rounded-lg cursor-pointer transition-all duration-130 hover:border-[rgba(220,40,40,0.8)] hover:bg-[rgba(220,40,40,0.14)]"
+            >
+              Reset range
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -382,40 +393,26 @@ export function PlayerChart({
       ref={chartShellRef}
       className="border border-[var(--color-surface-2)] rounded-xl bg-[var(--color-surface-1)] p-2.5 animate-[card-enter_340ms_ease_both]"
     >
-      {(title || subtitle || shareUrl) && showTitle ? (
+      {(title || subtitle) && showTitle ? (
         <div className="block m-1 mb-2.5">
-          <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-3">
-            <div className="min-h-[30px] flex items-start">
-              {shareUrl ? (
-                <span
-                  className="text-[var(--color-text-muted)] text-[0.75rem] no-underline hover:text-[var(--color-text-main)] tabular-nums"
-                  aria-label="Share URL"
-                  style={{ fontFamily: '"JetBrains Mono", monospace' }}
-                >
-                  {formatShareUrl(shareUrl)}
-                </span>
-              ) : null}
-            </div>
-
-            <div className="grid gap-1 justify-items-center">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-col gap-1 min-w-0 flex-1">
               {title ? (
-                <h2 className="m-0 text-[1.02rem] font-bold tracking-wide text-[var(--color-text-main)] text-center">
-                  {title}
-                </h2>
+                <h2 className="m-0 text-[1.1rem] font-semibold text-[var(--color-text-main)]">{title}</h2>
               ) : null}
-              {subtitle ? (
-                <p className="m-0 text-[var(--color-text-muted)] text-[0.82rem] leading-snug max-w-[78ch] text-center">
-                  {subtitle}
-                </p>
-              ) : null}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                {subtitle ? (
+                  <p className="m-0 text-[var(--color-text-muted)] text-[0.82rem] leading-snug">{subtitle}</p>
+                ) : null}
+                {headerControls ? <div className="flex items-center">{headerControls}</div> : null}
+              </div>
             </div>
 
-            <div className="min-h-[30px] flex justify-end items-start gap-2 flex-wrap">
-              {headerControls}
+            <div className="flex items-start gap-2 flex-shrink-0">
               {enableExport ? (
                 <button
                   type="button"
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 border border-[rgba(220,40,40,0.45)] rounded bg-[var(--color-chart-button-bg)] text-[var(--color-text-main)] text-[0.76rem] font-semibold tracking-wide cursor-pointer transition-all duration-140 self-start hover:border-[rgba(220,40,40,0.8)] hover:bg-[rgba(220,40,40,0.2)]"
+                  className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-[var(--color-text-muted)] text-[0.75rem] transition-colors duration-140 hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-2)]"
                   data-export-exclude="true"
                   onClick={() => {
                     void exportChartAsPng();
@@ -424,13 +421,13 @@ export function PlayerChart({
                   disabled={isExporting}
                 >
                   <Download size={13} aria-hidden="true" />
-                  {isExporting ? "Exporting..." : "Export PNG"}
+                  {isExporting ? "Exporting..." : "Export"}
                 </button>
               ) : null}
               {onPopOut ? (
                 <button
                   type="button"
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 border border-[rgba(220,40,40,0.45)] rounded bg-[var(--color-chart-button-bg)] text-[var(--color-text-main)] text-[0.76rem] font-semibold tracking-wide cursor-pointer transition-all duration-140 self-start hover:border-[rgba(220,40,40,0.8)] hover:bg-[rgba(220,40,40,0.2)]"
+                  className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-[var(--color-text-muted)] text-[0.75rem] transition-colors duration-140 hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-2)]"
                   data-export-exclude="true"
                   onClick={onPopOut}
                   aria-label={`Open ${title} in modal`}

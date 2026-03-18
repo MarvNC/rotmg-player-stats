@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { StatsSummary } from "../utils/metrics";
-import { ArrowDown, Clock3, Trophy, Users } from "lucide-react";
+import { ArrowDown, Trophy, Users } from "lucide-react";
 
 type StatsCardsProps = {
   stats: StatsSummary;
@@ -89,76 +89,57 @@ export function StatsCards({ stats }: StatsCardsProps) {
   }, []);
 
   return (
-    <section className="grid gap-4 grid-cols-4" aria-label="Summary statistics">
-      <article className="border border-[var(--color-surface-2)] rounded-xl bg-gradient-to-b from-[var(--color-stat-card-bg-start)] to-[var(--color-stat-card-bg-end)] p-4 transition-all duration-160 hover:border-[rgba(220,40,40,0.38)] hover:-translate-y-px animate-[card-enter_260ms_ease_both]">
-        <p className="m-0 text-[var(--color-text-muted)] text-[0.8rem] uppercase tracking-widest inline-flex items-center gap-1.5">
-          <Users
-            size={14}
-            aria-hidden="true"
-            className="text-[var(--color-brand-red)] transition-transform duration-140 group-hover:scale-[1.08]"
-          />
-          Current RealmEye Count
-        </p>
-        <p
-          className="my-3 mb-1.5 text-[1.35rem] font-bold tabular-nums"
-          style={{ fontFamily: '"JetBrains Mono", monospace' }}
-        >
-          {formatNumber(stats.currentRealmeye)}
-        </p>
-      </article>
+    <section className="flex flex-col gap-8" aria-label="Summary statistics">
+      <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
+        <div className="animate-[fade-in-up_400ms_ease_both]">
+          <div className="flex items-center gap-2 text-[var(--color-text-muted)] text-xs uppercase tracking-widest mb-2">
+            <Users size={14} aria-hidden="true" className="text-[var(--color-brand-red)]" />
+            <span>Current RealmEye Count</span>
+          </div>
+          <div
+            className="text-[3.5rem] md:text-[4.5rem] leading-none font-bold tabular-nums text-[var(--color-text-main)]"
+            style={{ fontFamily: '"JetBrains Mono", monospace' }}
+          >
+            {formatNumber(stats.currentRealmeye)}
+          </div>
+        </div>
 
-      <article className="border border-[var(--color-surface-2)] rounded-xl bg-gradient-to-b from-[var(--color-stat-card-bg-start)] to-[var(--color-stat-card-bg-end)] p-4 transition-all duration-160 hover:border-[rgba(220,40,40,0.38)] hover:-translate-y-px animate-[card-enter_260ms_ease_both]">
-        <p className="m-0 text-[var(--color-text-muted)] text-[0.8rem] uppercase tracking-widest inline-flex items-center gap-1.5">
-          <Trophy
-            size={14}
-            aria-hidden="true"
-            className="text-[var(--color-brand-red)] transition-transform duration-140 group-hover:scale-[1.08]"
-          />
-          All-Time Peak
-        </p>
-        <p
-          className="my-3 mb-1.5 text-[1.35rem] font-bold tabular-nums"
-          style={{ fontFamily: '"JetBrains Mono", monospace' }}
-        >
-          {formatNumber(stats.allTimePeak.value)}
-        </p>
-        <p className="m-0 text-[var(--color-text-muted)] text-[0.88rem]">{stats.allTimePeak.date ?? "-"}</p>
-      </article>
+        <div className="text-[var(--color-text-muted)] text-sm animate-[fade-in-up_400ms_ease_100ms_both]">
+          <span className="tabular-nums">{formatRelativeLastUpdated(stats.lastUpdatedAt, nowTimestamp)}</span>
+          <span className="mx-2">·</span>
+          <span className="tabular-nums">{formatLocalLastUpdated(stats.lastUpdatedAt)} local time</span>
+        </div>
+      </div>
 
-      <article className="border border-[var(--color-surface-2)] rounded-xl bg-gradient-to-b from-[var(--color-stat-card-bg-start)] to-[var(--color-stat-card-bg-end)] p-4 transition-all duration-160 hover:border-[rgba(220,40,40,0.38)] hover:-translate-y-px animate-[card-enter_260ms_ease_both]">
-        <p className="m-0 text-[var(--color-text-muted)] text-[0.8rem] uppercase tracking-widest inline-flex items-center gap-1.5">
-          <ArrowDown
-            size={14}
-            aria-hidden="true"
-            className="text-[var(--color-brand-red)] transition-transform duration-140 group-hover:scale-[1.08]"
-          />
-          All-Time Low
-        </p>
-        <p
-          className="my-3 mb-1.5 text-[1.35rem] font-bold tabular-nums"
-          style={{ fontFamily: '"JetBrains Mono", monospace' }}
-        >
-          {formatNumber(stats.allTimeLow.value)}
-        </p>
-        <p className="m-0 text-[var(--color-text-muted)] text-[0.88rem]">{stats.allTimeLow.date ?? "-"}</p>
-      </article>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="border border-[var(--color-surface-2)] rounded-xl bg-[var(--color-surface-1)] p-4 transition-all duration-130 hover:border-[rgba(220,40,40,0.38)] animate-[fade-in-up_400ms_ease_150ms_both]">
+          <div className="flex items-center gap-2 text-[var(--color-text-muted)] text-xs uppercase tracking-widest mb-3">
+            <Trophy size={14} aria-hidden="true" className="text-[var(--color-brand-red)]" />
+            <span>All-Time Peak</span>
+          </div>
+          <div
+            className="text-[1.75rem] leading-none font-semibold tabular-nums text-[var(--color-text-main)] mb-2"
+            style={{ fontFamily: '"JetBrains Mono", monospace' }}
+          >
+            {formatNumber(stats.allTimePeak.value)}
+          </div>
+          <div className="text-[var(--color-text-muted)] text-sm tabular-nums">{stats.allTimePeak.date ?? "-"}</div>
+        </div>
 
-      <article className="border border-[var(--color-surface-2)] rounded-xl bg-gradient-to-b from-[var(--color-stat-card-bg-start)] to-[var(--color-stat-card-bg-end)] p-4 transition-all duration-160 hover:border-[rgba(220,40,40,0.38)] hover:-translate-y-px animate-[card-enter_260ms_ease_both]">
-        <p className="m-0 text-[var(--color-text-muted)] text-[0.8rem] uppercase tracking-widest inline-flex items-center gap-1.5">
-          <Clock3
-            size={14}
-            aria-hidden="true"
-            className="text-[var(--color-brand-red)] transition-transform duration-140 group-hover:scale-[1.08]"
-          />
-          Last Updated
-        </p>
-        <p className="my-3 mb-1.5 text-[1.35rem] font-bold">
-          {formatRelativeLastUpdated(stats.lastUpdatedAt, nowTimestamp)}
-        </p>
-        <p className="m-0 text-[var(--color-text-muted)] text-[0.88rem]">
-          {formatLocalLastUpdated(stats.lastUpdatedAt)} local time
-        </p>
-      </article>
+        <div className="border border-[var(--color-surface-2)] rounded-xl bg-[var(--color-surface-1)] p-4 transition-all duration-130 hover:border-[rgba(220,40,40,0.38)] animate-[fade-in-up_400ms_ease_200ms_both]">
+          <div className="flex items-center gap-2 text-[var(--color-text-muted)] text-xs uppercase tracking-widest mb-3">
+            <ArrowDown size={14} aria-hidden="true" className="text-[var(--color-brand-red)]" />
+            <span>All-Time Low</span>
+          </div>
+          <div
+            className="text-[1.75rem] leading-none font-semibold tabular-nums text-[var(--color-text-main)] mb-2"
+            style={{ fontFamily: '"JetBrains Mono", monospace' }}
+          >
+            {formatNumber(stats.allTimeLow.value)}
+          </div>
+          <div className="text-[var(--color-text-muted)] text-sm tabular-nums">{stats.allTimeLow.date ?? "-"}</div>
+        </div>
+      </div>
     </section>
   );
 }

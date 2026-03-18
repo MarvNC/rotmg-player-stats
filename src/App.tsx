@@ -183,6 +183,19 @@ export default function App() {
     }
   }, [themeMode]);
 
+  useEffect(() => {
+    const handleResetRange = () => {
+      setHasRangeOverride(true);
+      setPreset("ALL");
+      setRange(resolvePresetRange(data, "ALL"));
+    };
+
+    window.addEventListener("resetDateRange", handleResetRange);
+    return () => {
+      window.removeEventListener("resetDateRange", handleResetRange);
+    };
+  }, [data]);
+
   const themeButton =
     themeMode === "system"
       ? { Icon: MonitorCog, label: "System" }
@@ -320,44 +333,50 @@ export default function App() {
           <>
             <StatsCards stats={stats} />
 
-            <section className="border border-[var(--color-surface-2)] rounded-xl bg-[var(--color-surface-1)] p-3 flex flex-wrap justify-between items-center gap-3">
-              <div className="inline-flex gap-2" role="tablist" aria-label="View switcher">
+            <section className="flex flex-wrap justify-between items-end gap-6">
+              <div
+                className="inline-flex gap-1 border-b border-[var(--color-surface-2)]"
+                role="tablist"
+                aria-label="View switcher"
+              >
                 <button
                   role="tab"
                   aria-selected={activeTab === "charts"}
-                  className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border font-semibold tracking-wide cursor-pointer transition-all duration-130 ${
+                  className={`inline-flex items-center gap-2 px-4 py-3 text-[0.95rem] font-semibold tracking-wide cursor-pointer transition-all duration-130 border-b-2 ${
                     activeTab === "charts"
-                      ? "bg-[var(--color-pill-active-bg)] border-[var(--color-pill-active-border)] text-white"
-                      : "border-[var(--color-surface-2)] bg-[var(--color-panel-highlight)] text-[var(--color-text-main)] hover:border-[rgba(220,40,40,0.3)] hover:bg-[rgba(220,40,40,0.16)]"
+                      ? "border-[var(--color-brand-red)] text-[var(--color-text-main)]"
+                      : "border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
                   }`}
                   onClick={() => setActiveTab("charts")}
                 >
-                  <LineChart size={15} aria-hidden="true" />
+                  <LineChart size={18} aria-hidden="true" />
                   Charts
                 </button>
                 <button
                   role="tab"
                   aria-selected={activeTab === "table"}
-                  className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border font-semibold tracking-wide cursor-pointer transition-all duration-130 ${
+                  className={`inline-flex items-center gap-2 px-4 py-3 text-[0.95rem] font-semibold tracking-wide cursor-pointer transition-all duration-130 border-b-2 ${
                     activeTab === "table"
-                      ? "bg-[var(--color-pill-active-bg)] border-[var(--color-pill-active-border)] text-white"
-                      : "border-[var(--color-surface-2)] bg-[var(--color-panel-highlight)] text-[var(--color-text-main)] hover:border-[rgba(220,40,40,0.3)] hover:bg-[rgba(220,40,40,0.16)]"
+                      ? "border-[var(--color-brand-red)] text-[var(--color-text-main)]"
+                      : "border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
                   }`}
                   onClick={() => setActiveTab("table")}
                 >
-                  <Table2 size={15} aria-hidden="true" />
+                  <Table2 size={18} aria-hidden="true" />
                   Data Table
                 </button>
               </div>
 
-              <RangeSelector
-                active={preset}
-                onSelect={(nextPreset) => {
-                  setHasRangeOverride(true);
-                  setPreset(nextPreset);
-                  setRange(resolvePresetRange(data, nextPreset));
-                }}
-              />
+              <div className="pb-1">
+                <RangeSelector
+                  active={preset}
+                  onSelect={(nextPreset) => {
+                    setHasRangeOverride(true);
+                    setPreset(nextPreset);
+                    setRange(resolvePresetRange(data, nextPreset));
+                  }}
+                />
+              </div>
             </section>
 
             {activeTab === "charts" ? (
@@ -437,7 +456,14 @@ export default function App() {
                 />
               </section>
             ) : (
-              <DataTable rows={tableRows} />
+              <DataTable
+                rows={tableRows}
+                onResetRange={() => {
+                  setHasRangeOverride(false);
+                  setPreset("2Y");
+                  setRange(resolvePresetRange(data, "2Y"));
+                }}
+              />
             )}
 
             {expandedChart != null && expandedChartTitle != null ? (
@@ -447,22 +473,20 @@ export default function App() {
                 onClick={() => setExpandedChart(null)}
               >
                 <div
-                  className="w-[90vw] max-h-full overflow-auto border border-[rgba(220,40,40,0.35)] rounded-xl bg-gradient-to-b from-[var(--color-modal-surface-start)] to-[var(--color-modal-surface-end)] shadow-[0_24px_48px_rgba(0,0,0,0.5)] p-2.5"
+                  className="relative w-[90vw] max-h-full overflow-auto border border-[rgba(220,40,40,0.35)] rounded-xl bg-[var(--color-surface-1)] shadow-[0_24px_48px_rgba(0,0,0,0.5)] p-2.5"
                   role="dialog"
                   aria-modal="true"
                   aria-label={`${expandedChartTitle} expanded view`}
                   onClick={(event) => event.stopPropagation()}
                 >
-                  <div className="flex items-center justify-end gap-2.5 mb-2">
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-1.5 px-3 py-2 border border-[var(--color-surface-2)] rounded text-[var(--color-text-main)] font-semibold cursor-pointer transition-colors duration-130 hover:bg-[var(--color-surface-2)]"
-                      onClick={() => setExpandedChart(null)}
-                    >
-                      <X size={14} aria-hidden="true" />
-                      Close
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    className="absolute top-2.5 right-2.5 inline-flex items-center justify-center p-2 rounded-lg text-[var(--color-text-muted)] cursor-pointer transition-colors duration-130 hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-2)]"
+                    onClick={() => setExpandedChart(null)}
+                    aria-label="Close modal"
+                  >
+                    <X size={20} aria-hidden="true" />
+                  </button>
 
                   <SharedRangeSlider
                     dates={allDates}
