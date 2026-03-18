@@ -56,7 +56,9 @@ function previousDailyValue(
   fromIndex: number
 ): number | null {
   const dayMs = 24 * 60 * 60 * 1000;
-  const anchorDateMs = Date.parse(`${points[fromIndex]!.date}T00:00:00Z`);
+  const anchorPoint = points[fromIndex];
+  if (anchorPoint == null) return null;
+  const anchorDateMs = Date.parse(`${anchorPoint.date}T00:00:00Z`);
 
   for (let i = fromIndex - 1; i >= 0; i -= 1) {
     const p = points[i];
@@ -77,14 +79,16 @@ function buildDayComparison(
   // Find index of the latest non-null daily entry for this field.
   let latestIdx = -1;
   for (let i = points.length - 1; i >= 0; i -= 1) {
-    if (points[i] != null && pick(points[i]!) != null) {
+    const pt = points[i];
+    if (pt != null && pick(pt) != null) {
       latestIdx = i;
       break;
     }
   }
 
   // current = snapshot value if available, else latest daily value
-  const current = snapshotValue ?? (latestIdx >= 0 ? pick(points[latestIdx]!) : null);
+  const latestPoint = latestIdx >= 0 ? points[latestIdx] : null;
+  const current = snapshotValue ?? (latestPoint != null ? pick(latestPoint) : null);
 
   // yesterday = the daily entry before the latest
   const yesterday = latestIdx >= 0 ? previousDailyValue(points, pick, latestIdx) : null;
