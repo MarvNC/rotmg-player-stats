@@ -29,11 +29,22 @@ function SkeletonChart() {
 export function AppSkeleton() {
   return (
     <>
-      <section className="grid gap-4 grid-cols-4" aria-label="Loading summary cards">
-        <SkeletonCard />
-        <SkeletonCard />
-        <SkeletonCard />
-        <SkeletonCard />
+      <section className="grid gap-5" aria-label="Loading summary cards">
+        {/* Hero realmeye count skeleton */}
+        <div className="grid gap-2" aria-hidden="true">
+          <div className="skeleton h-3 w-[30%]" />
+          <div className="skeleton h-14 w-[55%]" />
+        </div>
+        {/* Primary metric cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" aria-hidden="true">
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+        {/* Secondary record cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" aria-hidden="true">
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
       </section>
 
       <section

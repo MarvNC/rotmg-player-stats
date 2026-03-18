@@ -1,7 +1,16 @@
 import type { DailyPoint } from "../types";
 
+export type DayComparison = {
+  current: number | null;
+  yesterday: number | null;
+  /** Absolute delta: current - yesterday. Null if either is unavailable. */
+  delta: number | null;
+};
+
 export type StatsSummary = {
   currentRealmeye: number | null;
+  currentRealmstock: DayComparison;
+  launcherLoads24h: DayComparison;
   allTimePeak: { value: number | null; date: string | null };
   allTimeLow: { value: number | null; date: string | null };
   lastUpdatedAt: string | null;
@@ -35,6 +44,49 @@ function resolveFallbackLastUpdatedAt(points: DailyPoint[]): string | null {
   return Number.isFinite(fallbackTimestamp) ? new Date(fallbackTimestamp).toISOString() : null;
 }
 
+function buildDayComparison(points: DailyPoint[], pick: (p: DailyPoint) => number | null): DayComparison {
+  // Find the latest non-null value
+  let currentIdx = -1;
+  for (let i = points.length - 1; i >= 0; i -= 1) {
+    const p = points[i];
+    if (p != null && pick(p) != null) {
+      currentIdx = i;
+      break;
+    }
+  }
+
+  if (currentIdx === -1) {
+    return { current: null, yesterday: null, delta: null };
+  }
+
+  const current = pick(points[currentIdx]!);
+
+  // Find the previous non-null value (look back up to 2 days to handle gaps)
+  let yesterdayIdx = -1;
+  const dayMs = 24 * 60 * 60 * 1000;
+  const currentDateMs = Date.parse(`${points[currentIdx]!.date}T00:00:00Z`);
+
+  for (let i = currentIdx - 1; i >= 0; i -= 1) {
+    const p = points[i];
+    if (p == null || pick(p) == null) {
+      continue;
+    }
+    const prevDateMs = Date.parse(`${p.date}T00:00:00Z`);
+    const gap = Math.round((currentDateMs - prevDateMs) / dayMs);
+    if (gap <= 2) {
+      yesterdayIdx = i;
+      break;
+    }
+    // Too far back — no comparison
+    break;
+  }
+
+  const yesterday = yesterdayIdx >= 0 ? pick(points[yesterdayIdx]!) : null;
+  const delta = current != null && yesterday != null ? current - yesterday : null;
+
+  return { current, yesterday, delta };
+}
+
 export function buildStats(points: DailyPoint[], lastUpdatedAt: string | null = null): StatsSummary {
   const current = latestValue(points);
 
@@ -64,6 +116,8 @@ export function buildStats(points: DailyPoint[], lastUpdatedAt: string | null = 
 
   return {
     currentRealmeye: current,
+    currentRealmstock: buildDayComparison(points, (p) => p.realmstock_max),
+    launcherLoads24h: buildDayComparison(points, (p) => p.launcher_loads),
     allTimePeak,
     allTimeLow,
     lastUpdatedAt: lastUpdatedAt ?? resolveFallbackLastUpdatedAt(points),
