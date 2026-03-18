@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import type { CompactDaily, DailyPoint } from "../types";
+import type { CompactDaily, DailyPoint, Snapshot } from "../types";
 import { decodeDailyData } from "../utils/decodeDailyData";
 
 const DEFAULT_DAILY_DATA_URL = "https://raw.githubusercontent.com/MarvNC/rotmg-player-stats/data/daily.json";
 
 type UseDailyDataResult = {
   data: DailyPoint[];
+  snapshot: Snapshot | null;
   lastUpdatedAt: string | null;
   isLoading: boolean;
   error: string | null;
@@ -19,6 +20,7 @@ function resolveDailyDataUrl(): string {
 
 export function useDailyData(): UseDailyDataResult {
   const [data, setData] = useState<DailyPoint[]>([]);
+  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,6 +60,7 @@ export function useDailyData(): UseDailyDataResult {
             : null;
 
         setData(decodedData);
+        setSnapshot(compactData.s ?? null);
         setLastUpdatedAt(resolvedLastUpdatedAt);
       } catch (errorValue) {
         if (abortController.signal.aborted) {
@@ -66,6 +69,7 @@ export function useDailyData(): UseDailyDataResult {
 
         const message = errorValue instanceof Error ? errorValue.message : "Failed to load daily data.";
         setError(message);
+        setSnapshot(null);
         setLastUpdatedAt(null);
       } finally {
         if (!abortController.signal.aborted) {
@@ -81,5 +85,5 @@ export function useDailyData(): UseDailyDataResult {
     };
   }, [requestKey]);
 
-  return { data, lastUpdatedAt, isLoading, error, retry };
+  return { data, snapshot, lastUpdatedAt, isLoading, error, retry };
 }

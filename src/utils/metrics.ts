@@ -1,7 +1,9 @@
-import type { DailyPoint } from "../types";
+import type { DailyPoint, Snapshot } from "../types";
 
 export type DayComparison = {
+  /** The current value — from the snapshot when available, else latest daily entry */
   current: number | null;
+  /** Previous day's daily aggregate value for comparison */
   yesterday: number | null;
   /** Absolute delta: current - yesterday. Null if either is unavailable. */
   delta: number | null;
@@ -24,7 +26,7 @@ export type TableRow = DailyPoint & {
 
 const MAX_DELTA_GAP_DAYS = 7;
 
-function latestValue(points: DailyPoint[]): number | null {
+function latestRealmeyeValue(points: DailyPoint[]): number | null {
   for (let index = points.length - 1; index >= 0; index -= 1) {
     const point = points[index];
     if (point?.realmeye_max != null) {
@@ -44,83 +46,82 @@ function resolveFallbackLastUpdatedAt(points: DailyPoint[]): string | null {
   return Number.isFinite(fallbackTimestamp) ? new Date(fallbackTimestamp).toISOString() : null;
 }
 
-function buildDayComparison(points: DailyPoint[], pick: (p: DailyPoint) => number | null): DayComparison {
-  // Find the latest non-null value
-  let currentIdx = -1;
-  for (let i = points.length - 1; i >= 0; i -= 1) {
-    const p = points[i];
-    if (p != null && pick(p) != null) {
-      currentIdx = i;
-      break;
-    }
-  }
-
-  if (currentIdx === -1) {
-    return { current: null, yesterday: null, delta: null };
-  }
-
-  const current = pick(points[currentIdx]!);
-
-  // Find the previous non-null value (look back up to 2 days to handle gaps)
-  let yesterdayIdx = -1;
+/**
+ * Find the previous day's value from the daily array, looking back up to 2 days
+ * to handle occasional missing entries.
+ */
+function previousDailyValue(
+  points: DailyPoint[],
+  pick: (p: DailyPoint) => number | null,
+  fromIndex: number
+): number | null {
   const dayMs = 24 * 60 * 60 * 1000;
-  const currentDateMs = Date.parse(`${points[currentIdx]!.date}T00:00:00Z`);
+  const anchorDateMs = Date.parse(`${points[fromIndex]!.date}T00:00:00Z`);
 
-  for (let i = currentIdx - 1; i >= 0; i -= 1) {
+  for (let i = fromIndex - 1; i >= 0; i -= 1) {
     const p = points[i];
-    if (p == null || pick(p) == null) {
-      continue;
-    }
+    if (p == null || pick(p) == null) continue;
     const prevDateMs = Date.parse(`${p.date}T00:00:00Z`);
-    const gap = Math.round((currentDateMs - prevDateMs) / dayMs);
-    if (gap <= 2) {
-      yesterdayIdx = i;
+    const gap = Math.round((anchorDateMs - prevDateMs) / dayMs);
+    if (gap <= 2) return pick(p);
+    break; // too far back
+  }
+  return null;
+}
+
+function buildDayComparison(
+  points: DailyPoint[],
+  pick: (p: DailyPoint) => number | null,
+  snapshotValue: number | null
+): DayComparison {
+  // Find index of the latest non-null daily entry for this field.
+  let latestIdx = -1;
+  for (let i = points.length - 1; i >= 0; i -= 1) {
+    if (points[i] != null && pick(points[i]!) != null) {
+      latestIdx = i;
       break;
     }
-    // Too far back — no comparison
-    break;
   }
 
-  const yesterday = yesterdayIdx >= 0 ? pick(points[yesterdayIdx]!) : null;
+  // current = snapshot value if available, else latest daily value
+  const current = snapshotValue ?? (latestIdx >= 0 ? pick(points[latestIdx]!) : null);
+
+  // yesterday = the daily entry before the latest
+  const yesterday = latestIdx >= 0 ? previousDailyValue(points, pick, latestIdx) : null;
+
   const delta = current != null && yesterday != null ? current - yesterday : null;
 
   return { current, yesterday, delta };
 }
 
-export function buildStats(points: DailyPoint[], lastUpdatedAt: string | null = null): StatsSummary {
-  const current = latestValue(points);
+export function buildStats(
+  points: DailyPoint[],
+  snapshot: Snapshot | null = null,
+  lastUpdatedAt: string | null = null
+): StatsSummary {
+  const currentRealmeye = snapshot?.a ?? latestRealmeyeValue(points);
 
-  let allTimePeak: { value: number | null; date: string | null } = {
-    value: null,
-    date: null,
-  };
-
-  let allTimeLow: { value: number | null; date: string | null } = {
-    value: null,
-    date: null,
-  };
+  let allTimePeak: { value: number | null; date: string | null } = { value: null, date: null };
+  let allTimeLow: { value: number | null; date: string | null } = { value: null, date: null };
 
   for (const point of points) {
-    if (point.realmeye_max == null) {
-      continue;
-    }
+    if (point.realmeye_max == null) continue;
 
     if (allTimePeak.value == null || point.realmeye_max > allTimePeak.value) {
       allTimePeak = { value: point.realmeye_max, date: point.date };
     }
-
     if (allTimeLow.value == null || point.realmeye_max < allTimeLow.value) {
       allTimeLow = { value: point.realmeye_max, date: point.date };
     }
   }
 
   return {
-    currentRealmeye: current,
-    currentRealmstock: buildDayComparison(points, (p) => p.realmstock_max),
-    launcherLoads24h: buildDayComparison(points, (p) => p.launcher_loads),
+    currentRealmeye,
+    currentRealmstock: buildDayComparison(points, (p) => p.realmstock_max, snapshot?.c ?? null),
+    launcherLoads24h: buildDayComparison(points, (p) => p.launcher_loads, snapshot?.f ?? null),
     allTimePeak,
     allTimeLow,
-    lastUpdatedAt: lastUpdatedAt ?? resolveFallbackLastUpdatedAt(points),
+    lastUpdatedAt: lastUpdatedAt ?? snapshot?.t ?? resolveFallbackLastUpdatedAt(points),
   };
 }
 
@@ -129,21 +130,15 @@ export function buildTableRows(points: DailyPoint[]): TableRow[] {
 
   const computeDelta = (index: number, pick: (point: DailyPoint) => number | null): number | null => {
     const currentPoint = points[index];
-    if (!currentPoint) {
-      return null;
-    }
+    if (!currentPoint) return null;
 
     const currentValue = pick(currentPoint);
-    if (currentValue == null) {
-      return null;
-    }
+    if (currentValue == null) return null;
 
     let previousIndex = index - 1;
     while (previousIndex >= 0) {
       const previousPoint = points[previousIndex];
-      if (!previousPoint) {
-        break;
-      }
+      if (!previousPoint) break;
 
       const previousValue = pick(previousPoint);
       if (previousValue == null) {
@@ -153,23 +148,14 @@ export function buildTableRows(points: DailyPoint[]): TableRow[] {
 
       const currentDateMs = Date.parse(`${currentPoint.date}T00:00:00Z`);
       const previousDateMs = Date.parse(`${previousPoint.date}T00:00:00Z`);
-      if (!Number.isFinite(currentDateMs) || !Number.isFinite(previousDateMs)) {
-        return null;
-      }
+      if (!Number.isFinite(currentDateMs) || !Number.isFinite(previousDateMs)) return null;
 
       const dayGap = Math.round((currentDateMs - previousDateMs) / dayMs);
-      if (dayGap <= 0) {
-        return null;
-      }
+      if (dayGap <= 0) return null;
 
       const totalDelta = currentValue - previousValue;
-      if (dayGap === 1) {
-        return totalDelta;
-      }
-
-      if (dayGap > MAX_DELTA_GAP_DAYS) {
-        return null;
-      }
+      if (dayGap === 1) return totalDelta;
+      if (dayGap > MAX_DELTA_GAP_DAYS) return null;
 
       return Math.round(totalDelta / dayGap);
     }
@@ -177,12 +163,10 @@ export function buildTableRows(points: DailyPoint[]): TableRow[] {
     return null;
   };
 
-  return points.map((point, index) => {
-    return {
-      ...point,
-      realmeye_delta: computeDelta(index, (item) => item.realmeye_max),
-      realmstock_delta: computeDelta(index, (item) => item.realmstock_max),
-      launcher_delta: computeDelta(index, (item) => item.launcher_loads),
-    };
-  });
+  return points.map((point, index) => ({
+    ...point,
+    realmeye_delta: computeDelta(index, (item) => item.realmeye_max),
+    realmstock_delta: computeDelta(index, (item) => item.realmstock_max),
+    launcher_delta: computeDelta(index, (item) => item.launcher_loads),
+  }));
 }

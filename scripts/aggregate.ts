@@ -9,12 +9,24 @@ type DailyAggregate = {
   launcher_loads: number | null;
 };
 
+type Snapshot = {
+  /** ISO 8601 UTC timestamp of the most recent scrape across all sources */
+  t: string;
+  /** Latest realmeye active player count */
+  a: number | null;
+  /** Latest realmstock live player count */
+  c: number | null;
+  /** Launcher loads over the 24h window ending at the latest scrape timestamp */
+  f: number | null;
+};
+
 type CompactDaily = {
   u: string;
   d: string[];
   a: Array<number | null>;
   c: Array<number | null>;
   f: Array<number | null>;
+  s: Snapshot;
 };
 
 type Row = {
@@ -259,6 +271,87 @@ function aggregateLauncherLoads(rows: LauncherRow[]): Map<string, number | null>
   return dailyLoads;
 }
 
+/**
+ * Compute launcher loads over the 24h window ending at `endTimestampMs`.
+ * Uses the same interpolation logic as the daily aggregation.
+ */
+function computeLauncherLoads24h(points: LauncherPoint[], endTimestampMs: number): number | null {
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const startTimestampMs = endTimestampMs - msPerDay;
+
+  const endViews = interpolateLauncherViewsAt(points, endTimestampMs);
+  const startViews = interpolateLauncherViewsAt(points, startTimestampMs);
+
+  if (endViews == null || startViews == null) {
+    return null;
+  }
+
+  const delta = endViews - startViews;
+  return delta >= 0 ? Math.round(delta) : null;
+}
+
+/** Returns the latest timestamp (ms) found across all rows in a CSV (format: time,date,value). */
+function latestTimestampMs(rows: LauncherRow[]): number | null {
+  let latest: number | null = null;
+  for (const row of rows) {
+    const ts = Date.parse(`${row.date}T${row.time}Z`);
+    if (Number.isFinite(ts) && (latest == null || ts > latest)) {
+      latest = ts;
+    }
+  }
+  return latest;
+}
+
+/** Returns the latest player value from a simple Row[] (most recently dated row). */
+function latestPlayerValue(rows: Row[]): { timestampMs: number | null; value: number | null } {
+  // Rows may be in any order; find the last date entry with a valid value.
+  let latestDate: string | null = null;
+  let latestValue: number | null = null;
+
+  for (const row of rows) {
+    if (latestDate == null || row.date > latestDate) {
+      latestDate = row.date;
+      latestValue = row.players;
+    } else if (row.date === latestDate && row.players > (latestValue ?? 0)) {
+      latestValue = row.players;
+    }
+  }
+
+  const timestampMs = latestDate != null ? Date.parse(`${latestDate}T00:00:00Z`) : null;
+  return { timestampMs, value: latestValue };
+}
+
+/**
+ * Build the snapshot object: latest raw values from each source, timestamped
+ * at the most recent scrape across all three.
+ */
+function buildSnapshot(realmeyeRows: Row[], realmstockRows: Row[], launcherRows: LauncherRow[]): Snapshot {
+  const realmeyeLatest = latestPlayerValue(realmeyeRows);
+  const realmstockLatest = latestPlayerValue(realmstockRows);
+
+  // For launcher, use the actual timestamp of the latest scrape row.
+  const launcherLatestMs = latestTimestampMs(launcherRows);
+  const launcherPoints = normalizeLauncherPoints(launcherRows);
+
+  // Compute launcher loads for the 24h window ending at the latest scrape.
+  const launcherLoads24h = launcherLatestMs != null ? computeLauncherLoads24h(launcherPoints, launcherLatestMs) : null;
+
+  // Snapshot timestamp = most recent data point across all sources.
+  const candidates: number[] = [];
+  if (realmeyeLatest.timestampMs != null) candidates.push(realmeyeLatest.timestampMs);
+  if (realmstockLatest.timestampMs != null) candidates.push(realmstockLatest.timestampMs);
+  if (launcherLatestMs != null) candidates.push(launcherLatestMs);
+
+  const snapshotTimestampMs = candidates.length > 0 ? Math.max(...candidates) : Date.now();
+
+  return {
+    t: new Date(snapshotTimestampMs).toISOString(),
+    a: realmeyeLatest.value,
+    c: realmstockLatest.value,
+    f: launcherLoads24h,
+  };
+}
+
 function mergeDaily(
   realmeyeDaily: Map<string, number>,
   realmstockDaily: Map<string, number>,
@@ -286,13 +379,14 @@ function compactDate(date: string): string {
   return date.replace(/-/g, "");
 }
 
-function toCompactDaily(points: DailyAggregate[], updatedAt: string): CompactDaily {
+function toCompactDaily(points: DailyAggregate[], updatedAt: string, snapshot: Snapshot): CompactDaily {
   return {
     u: updatedAt,
     d: points.map((point) => compactDate(point.date)),
     a: points.map((point) => point.realmeye_max),
     c: points.map((point) => point.realmstock_max),
     f: points.map((point) => point.launcher_loads),
+    s: snapshot,
   };
 }
 
@@ -307,13 +401,17 @@ function run(): void {
     aggregateMaxByDate(realmstockRows),
     aggregateLauncherLoads(launcherRows)
   );
-  const compact = toCompactDaily(merged, new Date().toISOString());
+  const snapshot = buildSnapshot(realmeyeRows, realmstockRows, launcherRows);
+  const compact = toCompactDaily(merged, new Date().toISOString(), snapshot);
 
   mkdirSync(resolve(ROOT, "src", "data"), { recursive: true });
   writeFileSync(OUTPUT_FILE, `${JSON.stringify(compact)}\n`, "utf8");
 
   process.stdout.write(
     `Aggregated ${merged.length} days from ${realmeyeRows.length} RealmEye rows, ${realmstockRows.length} RealmStock rows, and ${launcherRows.length} launcher rows.\n`
+  );
+  process.stdout.write(
+    `Snapshot: realmeye=${snapshot.a}, realmstock=${snapshot.c}, launcher_24h=${snapshot.f} at ${snapshot.t}\n`
   );
 }
 

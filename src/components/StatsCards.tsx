@@ -196,13 +196,13 @@ export function StatsCards({ stats }: StatsCardsProps) {
       {/* Primary metric cards: live players + launcher loads, with yesterday delta */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-[fade-in-up_400ms_ease_80ms_both]">
         <PrimaryMetricCard
-          label="Live Players (RealmStock)"
+          label="Current Players (RealmStock)"
           icon={Users}
           comparison={stats.currentRealmstock}
           animDelay="80ms"
         />
         <PrimaryMetricCard
-          label="Launcher Loads — Past 24h"
+          label="Launcher Loads (Past 24h)"
           icon={Rocket}
           comparison={stats.launcherLoads24h}
           unit="loads / day"

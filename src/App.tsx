@@ -119,7 +119,7 @@ function smoothWeekly(values: Array<number | null>): Array<number | null> {
 }
 
 export default function App() {
-  const { data, lastUpdatedAt, isLoading, error, retry } = useDailyData();
+  const { data, snapshot, lastUpdatedAt, isLoading, error, retry } = useDailyData();
   const [activeTab, setActiveTab] = useState<Tab>("charts");
   const [preset, setPreset] = useState<RangePreset>("2Y");
   const [range, setRange] = useState<DateRange>(() => resolvePresetRange([], "2Y"));
@@ -153,7 +153,7 @@ export default function App() {
   }, [data, hasRangeOverride, preset, range]);
 
   const filtered = useMemo(() => filterByRange(data, effectiveRange), [data, effectiveRange]);
-  const stats = useMemo(() => buildStats(data, lastUpdatedAt), [data, lastUpdatedAt]);
+  const stats = useMemo(() => buildStats(data, snapshot, lastUpdatedAt), [data, snapshot, lastUpdatedAt]);
 
   const tableRows = useMemo(() => buildTableRows(filtered), [filtered]);
 
