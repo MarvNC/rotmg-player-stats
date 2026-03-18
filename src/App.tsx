@@ -16,6 +16,62 @@ type ExpandedChart = "realmeye" | "realmstock" | "launcher" | null;
 type ThemeMode = "system" | "light" | "dark";
 type ResolvedTheme = "light" | "dark";
 
+// Beautiful toggle switch component
+function ToggleSwitch({
+  id,
+  label,
+  checked,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  checked: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <label htmlFor={id} className="inline-flex items-center gap-2.5 cursor-pointer select-none group">
+      <span className="relative inline-flex">
+        <input
+          id={id}
+          type="checkbox"
+          className="sr-only peer"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+        />
+        {/* Track */}
+        <span
+          className={`
+            block w-9 h-5 rounded-full border transition-all duration-200
+            peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--color-brand-red)]
+            ${
+              checked
+                ? "bg-[var(--color-brand-red)] border-[var(--color-brand-red)]"
+                : "bg-[var(--color-surface-2)] border-[var(--color-surface-2)] group-hover:border-[rgba(220,40,40,0.5)]"
+            }
+          `}
+        />
+        {/* Thumb */}
+        <span
+          className={`
+            absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm
+            transition-all duration-200 ease-out
+            ${checked ? "translate-x-4" : "translate-x-0"}
+          `}
+        />
+      </span>
+      <span
+        className={`text-[0.82rem] font-medium transition-colors duration-150 ${
+          checked
+            ? "text-[var(--color-text-main)]"
+            : "text-[var(--color-text-muted)] group-hover:text-[var(--color-text-main)]"
+        }`}
+      >
+        {label}
+      </span>
+    </label>
+  );
+}
+
 const CHART_COPY = {
   realmeye: {
     title: "RotMG Active Players Over Time",
@@ -69,11 +125,8 @@ export default function App() {
   const [range, setRange] = useState<DateRange>(() => resolvePresetRange([], "2Y"));
   const [hasRangeOverride, setHasRangeOverride] = useState(false);
   const [expandedChart, setExpandedChart] = useState<ExpandedChart>(null);
-  const [isRealmeyeYAxisZeroOn, setIsRealmeyeYAxisZeroOn] = useState(false);
-  const [isRealmstockYAxisZeroOn, setIsRealmstockYAxisZeroOn] = useState(false);
-  const [isLauncherYAxisZeroOn, setIsLauncherYAxisZeroOn] = useState(false);
-  const [isRealmstockWeeklySmoothOn, setIsRealmstockWeeklySmoothOn] = useState(true);
-  const [isLauncherWeeklySmoothOn, setIsLauncherWeeklySmoothOn] = useState(true);
+  const [isYAxisZeroOn, setIsYAxisZeroOn] = useState(false);
+  const [isWeeklySmoothOn, setIsWeeklySmoothOn] = useState(true);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     if (typeof window === "undefined") {
       return "system";
@@ -121,12 +174,8 @@ export default function App() {
   const launcherLoads = useMemo(() => launcherSeries.map((item) => item.launcher_loads), [launcherSeries]);
   const launcherSmoothedLoads = useMemo(() => smoothWeekly(launcherLoads), [launcherLoads]);
 
-  const realmstockSubtitle = isRealmstockWeeklySmoothOn
-    ? CHART_COPY.realmstock.smoothedSubtitle
-    : CHART_COPY.realmstock.subtitle;
-  const launcherSubtitle = isLauncherWeeklySmoothOn
-    ? CHART_COPY.launcher.smoothedSubtitle
-    : CHART_COPY.launcher.subtitle;
+  const realmstockSubtitle = isWeeklySmoothOn ? CHART_COPY.realmstock.smoothedSubtitle : CHART_COPY.realmstock.subtitle;
+  const launcherSubtitle = isWeeklySmoothOn ? CHART_COPY.launcher.smoothedSubtitle : CHART_COPY.launcher.subtitle;
 
   useEffect(() => {
     if (expandedChart == null) {
@@ -206,40 +255,6 @@ export default function App() {
   const cycleThemeMode = () => {
     setThemeMode((current) => (current === "system" ? "light" : current === "light" ? "dark" : "system"));
   };
-
-  const renderWeeklySmoothingToggle = (chartTitle: string, isActive: boolean, onToggle: () => void) => (
-    <button
-      type="button"
-      className={`inline-flex items-center justify-center min-h-[30px] px-3 py-1.5 text-[0.74rem] font-bold tracking-wide cursor-pointer transition-all duration-130 border rounded-full ${
-        isActive
-          ? "bg-[var(--color-pill-active-bg)] border-[var(--color-pill-active-border)] text-white"
-          : "bg-[color-mix(in_srgb,var(--color-surface-1)_74%,#000000_26%)] border-[var(--color-surface-2)] text-[var(--color-text-main)] hover:border-[rgba(220,40,40,0.6)] hover:bg-[color-mix(in_srgb,var(--color-surface-1)_50%,rgba(220,40,40,0.26)_50%)]"
-      }`}
-      data-export-exclude="true"
-      onClick={onToggle}
-      aria-label={`Weekly smoothing ${isActive ? "on" : "off"} for ${chartTitle}`}
-      aria-pressed={isActive}
-    >
-      Weekly Smoothing
-    </button>
-  );
-
-  const renderYAxisBaselineToggle = (chartTitle: string, isActive: boolean, onToggle: () => void) => (
-    <button
-      type="button"
-      className={`inline-flex items-center justify-center min-h-[30px] px-3 py-1.5 text-[0.74rem] font-bold tracking-wide cursor-pointer transition-all duration-130 border rounded-full ${
-        isActive
-          ? "bg-[var(--color-pill-active-bg)] border-[var(--color-pill-active-border)] text-white"
-          : "bg-[color-mix(in_srgb,var(--color-surface-1)_74%,#000000_26%)] border-[var(--color-surface-2)] text-[var(--color-text-main)] hover:border-[rgba(220,40,40,0.6)] hover:bg-[color-mix(in_srgb,var(--color-surface-1)_50%,rgba(220,40,40,0.26)_50%)]"
-      }`}
-      data-export-exclude="true"
-      onClick={onToggle}
-      aria-label={`Y-axis baseline at zero ${isActive ? "on" : "off"} for ${chartTitle}`}
-      aria-pressed={isActive}
-    >
-      Y Min = 0
-    </button>
-  );
 
   const expandedChartTitle =
     expandedChart === "realmeye"
@@ -333,6 +348,7 @@ export default function App() {
           <>
             <StatsCards stats={stats} />
 
+            {/* Tab bar row */}
             <section className="flex flex-wrap justify-between items-end gap-6">
               <div
                 className="inline-flex gap-1 border-b border-[var(--color-surface-2)]"
@@ -379,6 +395,32 @@ export default function App() {
               </div>
             </section>
 
+            {/* Global chart controls — only visible in charts tab */}
+            {activeTab === "charts" ? (
+              <div
+                className="flex flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 rounded-lg border border-[var(--color-surface-2)] bg-[var(--color-surface-1)]"
+                data-export-exclude="true"
+              >
+                <span className="text-[0.72rem] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
+                  Chart Options
+                </span>
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+                  <ToggleSwitch
+                    id="global-y-zero"
+                    label="Y-axis from zero"
+                    checked={isYAxisZeroOn}
+                    onChange={setIsYAxisZeroOn}
+                  />
+                  <ToggleSwitch
+                    id="global-smooth"
+                    label="7-day smoothing"
+                    checked={isWeeklySmoothOn}
+                    onChange={setIsWeeklySmoothOn}
+                  />
+                </div>
+              </div>
+            ) : null}
+
             {activeTab === "charts" ? (
               <section className="grid gap-4">
                 <SharedRangeSlider
@@ -400,10 +442,7 @@ export default function App() {
                   theme={resolvedTheme}
                   range={effectiveRange}
                   syncKey="rotmg-sync"
-                  isYAxisBaselineZero={isRealmeyeYAxisZeroOn}
-                  headerControls={renderYAxisBaselineToggle(CHART_COPY.realmeye.title, isRealmeyeYAxisZeroOn, () =>
-                    setIsRealmeyeYAxisZeroOn((current) => !current)
-                  )}
+                  isYAxisBaselineZero={isYAxisZeroOn}
                   onPopOut={() => setExpandedChart("realmeye")}
                 />
 
@@ -412,22 +451,12 @@ export default function App() {
                   subtitle={realmstockSubtitle}
                   shareUrl={SITE_URL}
                   dates={realmstockDates}
-                  maxValues={isRealmstockWeeklySmoothOn ? realmstockSmoothedMax : realmstockMax}
+                  maxValues={isWeeklySmoothOn ? realmstockSmoothedMax : realmstockMax}
                   tooltipValueLabel="players online"
                   theme={resolvedTheme}
                   range={effectiveRange}
                   syncKey="rotmg-sync"
-                  isYAxisBaselineZero={isRealmstockYAxisZeroOn}
-                  headerControls={
-                    <>
-                      {renderYAxisBaselineToggle(CHART_COPY.realmstock.title, isRealmstockYAxisZeroOn, () =>
-                        setIsRealmstockYAxisZeroOn((current) => !current)
-                      )}
-                      {renderWeeklySmoothingToggle(CHART_COPY.realmstock.title, isRealmstockWeeklySmoothOn, () =>
-                        setIsRealmstockWeeklySmoothOn((current) => !current)
-                      )}
-                    </>
-                  }
+                  isYAxisBaselineZero={isYAxisZeroOn}
                   onPopOut={() => setExpandedChart("realmstock")}
                 />
 
@@ -436,22 +465,12 @@ export default function App() {
                   subtitle={launcherSubtitle}
                   shareUrl={SITE_URL}
                   dates={launcherDates}
-                  maxValues={isLauncherWeeklySmoothOn ? launcherSmoothedLoads : launcherLoads}
+                  maxValues={isWeeklySmoothOn ? launcherSmoothedLoads : launcherLoads}
                   tooltipValueLabel="loads"
                   theme={resolvedTheme}
                   range={effectiveRange}
                   syncKey="rotmg-sync"
-                  isYAxisBaselineZero={isLauncherYAxisZeroOn}
-                  headerControls={
-                    <>
-                      {renderYAxisBaselineToggle(CHART_COPY.launcher.title, isLauncherYAxisZeroOn, () =>
-                        setIsLauncherYAxisZeroOn((current) => !current)
-                      )}
-                      {renderWeeklySmoothingToggle(CHART_COPY.launcher.title, isLauncherWeeklySmoothOn, () =>
-                        setIsLauncherWeeklySmoothOn((current) => !current)
-                      )}
-                    </>
-                  }
+                  isYAxisBaselineZero={isYAxisZeroOn}
                   onPopOut={() => setExpandedChart("launcher")}
                 />
               </section>
@@ -473,99 +492,96 @@ export default function App() {
                 onClick={() => setExpandedChart(null)}
               >
                 <div
-                  className="relative w-[90vw] max-h-full overflow-auto border border-[rgba(220,40,40,0.35)] rounded-xl bg-[var(--color-surface-1)] shadow-[0_24px_48px_rgba(0,0,0,0.5)] p-2.5"
+                  className="w-[90vw] max-h-[90vh] overflow-auto border border-[rgba(220,40,40,0.35)] rounded-xl bg-[var(--color-surface-1)] shadow-[0_24px_48px_rgba(0,0,0,0.5)] flex flex-col"
                   role="dialog"
                   aria-modal="true"
                   aria-label={`${expandedChartTitle} expanded view`}
                   onClick={(event) => event.stopPropagation()}
                 >
-                  <button
-                    type="button"
-                    className="absolute top-2.5 right-2.5 inline-flex items-center justify-center p-2 rounded-lg text-[var(--color-text-muted)] cursor-pointer transition-colors duration-130 hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-2)]"
-                    onClick={() => setExpandedChart(null)}
-                    aria-label="Close modal"
-                  >
-                    <X size={20} aria-hidden="true" />
-                  </button>
+                  {/* Modal header — close button, range slider, controls */}
+                  <div className="flex-shrink-0 flex items-center justify-between gap-3 px-3 pt-3 pb-2 border-b border-[var(--color-surface-2)]">
+                    <div className="flex items-center gap-x-5 gap-y-2 flex-wrap">
+                      <span className="text-[0.72rem] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
+                        Chart Options
+                      </span>
+                      <ToggleSwitch
+                        id="modal-y-zero"
+                        label="Y-axis from zero"
+                        checked={isYAxisZeroOn}
+                        onChange={setIsYAxisZeroOn}
+                      />
+                      {expandedChart !== "realmeye" ? (
+                        <ToggleSwitch
+                          id="modal-smooth"
+                          label="7-day smoothing"
+                          checked={isWeeklySmoothOn}
+                          onChange={setIsWeeklySmoothOn}
+                        />
+                      ) : null}
+                    </div>
+                    <button
+                      type="button"
+                      className="flex-shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-lg text-[var(--color-text-muted)] cursor-pointer transition-colors duration-130 hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-2)]"
+                      onClick={() => setExpandedChart(null)}
+                      aria-label="Close modal"
+                    >
+                      <X size={18} aria-hidden="true" />
+                    </button>
+                  </div>
 
-                  <SharedRangeSlider
-                    dates={allDates}
-                    range={effectiveRange}
-                    onChange={(nextRange) => {
-                      setHasRangeOverride(true);
-                      setPreset("ALL");
-                      setRange(nextRange);
-                    }}
-                  />
+                  {/* Range slider */}
+                  <div className="flex-shrink-0 px-3 pt-3">
+                    <SharedRangeSlider
+                      dates={allDates}
+                      range={effectiveRange}
+                      onChange={(nextRange) => {
+                        setHasRangeOverride(true);
+                        setPreset("ALL");
+                        setRange(nextRange);
+                      }}
+                    />
+                  </div>
 
-                  <PlayerChart
-                    title={expandedChartTitle}
-                    subtitle={expandedChartSubtitle ?? undefined}
-                    shareUrl={SITE_URL}
-                    dates={
-                      expandedChart === "realmeye"
-                        ? realmeyeDates
-                        : expandedChart === "realmstock"
-                          ? realmstockDates
-                          : launcherDates
-                    }
-                    maxValues={
-                      expandedChart === "realmeye"
-                        ? realmeyeMax
-                        : expandedChart === "realmstock"
-                          ? isRealmstockWeeklySmoothOn
-                            ? realmstockSmoothedMax
-                            : realmstockMax
-                          : isLauncherWeeklySmoothOn
-                            ? launcherSmoothedLoads
-                            : launcherLoads
-                    }
-                    tooltipValueLabel={
-                      expandedChart === "realmstock"
-                        ? "players online"
-                        : expandedChart === "launcher"
-                          ? "loads"
-                          : "players"
-                    }
-                    theme={resolvedTheme}
-                    range={effectiveRange}
-                    syncKey="rotmg-modal-sync"
-                    height={460}
-                    minHeightRatio={0.5}
-                    enableExport
-                    isYAxisBaselineZero={
-                      expandedChart === "realmeye"
-                        ? isRealmeyeYAxisZeroOn
-                        : expandedChart === "realmstock"
-                          ? isRealmstockYAxisZeroOn
-                          : isLauncherYAxisZeroOn
-                    }
-                    headerControls={
-                      expandedChart === "realmeye" ? (
-                        renderYAxisBaselineToggle(CHART_COPY.realmeye.title, isRealmeyeYAxisZeroOn, () =>
-                          setIsRealmeyeYAxisZeroOn((current) => !current)
-                        )
-                      ) : expandedChart === "realmstock" ? (
-                        <>
-                          {renderYAxisBaselineToggle(CHART_COPY.realmstock.title, isRealmstockYAxisZeroOn, () =>
-                            setIsRealmstockYAxisZeroOn((current) => !current)
-                          )}
-                          {renderWeeklySmoothingToggle(CHART_COPY.realmstock.title, isRealmstockWeeklySmoothOn, () =>
-                            setIsRealmstockWeeklySmoothOn((current) => !current)
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          {renderYAxisBaselineToggle(CHART_COPY.launcher.title, isLauncherYAxisZeroOn, () =>
-                            setIsLauncherYAxisZeroOn((current) => !current)
-                          )}
-                          {renderWeeklySmoothingToggle(CHART_COPY.launcher.title, isLauncherWeeklySmoothOn, () =>
-                            setIsLauncherWeeklySmoothOn((current) => !current)
-                          )}
-                        </>
-                      )
-                    }
-                  />
+                  {/* Chart */}
+                  <div className="p-3">
+                    <PlayerChart
+                      title={expandedChartTitle}
+                      subtitle={expandedChartSubtitle ?? undefined}
+                      shareUrl={SITE_URL}
+                      dates={
+                        expandedChart === "realmeye"
+                          ? realmeyeDates
+                          : expandedChart === "realmstock"
+                            ? realmstockDates
+                            : launcherDates
+                      }
+                      maxValues={
+                        expandedChart === "realmeye"
+                          ? realmeyeMax
+                          : expandedChart === "realmstock"
+                            ? isWeeklySmoothOn
+                              ? realmstockSmoothedMax
+                              : realmstockMax
+                            : isWeeklySmoothOn
+                              ? launcherSmoothedLoads
+                              : launcherLoads
+                      }
+                      tooltipValueLabel={
+                        expandedChart === "realmstock"
+                          ? "players online"
+                          : expandedChart === "launcher"
+                            ? "loads"
+                            : "players"
+                      }
+                      theme={resolvedTheme}
+                      range={effectiveRange}
+                      syncKey="rotmg-modal-sync"
+                      height={460}
+                      minHeightRatio={0.5}
+                      enableExport
+                      isYAxisBaselineZero={isYAxisZeroOn}
+                    />
+                  </div>
                 </div>
               </div>
             ) : null}
