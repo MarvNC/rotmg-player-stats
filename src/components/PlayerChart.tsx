@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Download, Expand } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Expand, ExternalLink } from "lucide-react";
 import { toBlob } from "html-to-image";
 import uPlot from "uplot";
 import type { AlignedData, Options } from "uplot";
 import type { DateRange } from "../types";
+import type { HistoryEvent } from "../data/historyEvents";
 
 export type ChartAnnotation = {
   start: string;
@@ -14,6 +15,110 @@ export type ChartAnnotation = {
 };
 
 const NO_ANNOTATIONS: ChartAnnotation[] = [];
+const NO_EVENTS: HistoryEvent[] = [];
+
+type EventGroup = {
+  key: string;
+  x: number;
+  events: HistoryEvent[];
+};
+
+type TimelineItem = {
+  key: string;
+  x: number;
+  endX: number;
+  events?: HistoryEvent[];
+  annotation?: ChartAnnotation;
+};
+
+const TIMELINE_HOVER_RADIUS = 18;
+
+function groupEvents(chart: uPlot, events: HistoryEvent[], firstDate: string, lastDate: string): EventGroup[] {
+  const min = chart.scales.x.min;
+  const max = chart.scales.x.max;
+  if (min == null || max == null) return [];
+
+  const pixelRatio = chart.ctx.canvas.width / chart.width;
+  const plotLeft = chart.bbox.left / pixelRatio;
+  const groups: EventGroup[] = [];
+  for (const event of events) {
+    if (event.end) continue;
+    if (event.date < firstDate || event.date > lastDate) continue;
+    const day = toUnixDay(event.date);
+    if (day < min || day > max) continue;
+
+    const x = plotLeft + chart.valToPos(day, "x");
+    const previous = groups[groups.length - 1];
+    if (previous && x - previous.x < 28) {
+      previous.events.push(event);
+      previous.x = (previous.x * (previous.events.length - 1) + x) / previous.events.length;
+      previous.key += `-${event.date}`;
+    } else {
+      groups.push({ key: event.date, x, events: [event] });
+    }
+  }
+  return groups;
+}
+
+function timelineItems(
+  chart: uPlot,
+  events: HistoryEvent[],
+  annotations: ChartAnnotation[],
+  firstDate: string,
+  lastDate: string
+): TimelineItem[] {
+  const min = Math.max(chart.scales.x.min ?? 0, toUnixDay(firstDate));
+  const max = Math.min(chart.scales.x.max ?? 0, toUnixDay(lastDate) + 86399);
+  if (min >= max) return [];
+
+  const pixelRatio = chart.ctx.canvas.width / chart.width;
+  const plotLeft = chart.bbox.left / pixelRatio;
+  const xFor = (value: number) => plotLeft + chart.valToPos(value, "x");
+  const items: TimelineItem[] = groupEvents(chart, events, firstDate, lastDate).map((group) => ({
+    key: `point-${group.key}`,
+    x: group.x,
+    endX: group.x,
+    events: group.events,
+  }));
+
+  for (const event of events) {
+    if (!event.end) continue;
+    const start = toUnixDay(event.date);
+    const end = toUnixDay(event.end) + 86400;
+    if (end <= min || start >= max) continue;
+    items.push({
+      key: `period-${event.date}`,
+      x: xFor(Math.max(start, min)),
+      endX: xFor(Math.min(end, max)),
+      events: [event],
+    });
+  }
+
+  for (const annotation of annotations) {
+    const start = toUnixDay(annotation.start);
+    const end = toUnixDay(annotation.end);
+    if (end <= min || start >= max) continue;
+    items.push({
+      key: `annotation-${annotation.start}`,
+      x: xFor(Math.max(start, min)),
+      endX: xFor(Math.min(end, max)),
+      annotation,
+    });
+  }
+
+  return items.sort((a, b) => a.x - b.x || a.endX - b.endX);
+}
+
+function itemsNearX(items: TimelineItem[], x: number): TimelineItem[] {
+  return items.filter((item) => {
+    const distance = x < item.x ? item.x - x : x > item.endX ? x - item.endX : 0;
+    return distance <= TIMELINE_HOVER_RADIUS;
+  });
+}
+
+function sameKeys(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((key, index) => key === b[index]);
+}
 
 type PlayerChartProps = {
   title: string;
@@ -33,6 +138,7 @@ type PlayerChartProps = {
   headerControls?: ReactNode;
   isYAxisBaselineZero?: boolean;
   annotations?: ChartAnnotation[];
+  events?: HistoryEvent[];
 };
 
 function toUnixDay(date: string): number {
@@ -120,13 +226,17 @@ export function PlayerChart({
   headerControls,
   isYAxisBaselineZero = false,
   annotations = NO_ANNOTATIONS,
+  events = NO_EVENTS,
 }: PlayerChartProps) {
   const chartShellRef = useRef<HTMLDivElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<uPlot | null>(null);
+  const isPlotPointerInsideRef = useRef(false);
   const [chartHeight, setChartHeight] = useState(height);
   const [isExporting, setIsExporting] = useState(false);
+  const [items, setItems] = useState<TimelineItem[]>([]);
+  const [selectedEventKeys, setSelectedEventKeys] = useState<string[]>([]);
 
   const resolveHeight = useCallback(
     (width: number) => {
@@ -140,9 +250,14 @@ export function PlayerChart({
   );
 
   const frameHeight = chartHeight + 18;
-  const visibleAnnotations = annotations.filter(
-    (annotation) => annotation.start <= range.end && annotation.end > range.start
-  );
+  const selectedItems = items.filter((item) => selectedEventKeys.includes(item.key));
+  const selectedEventIndex = selectedItems.length > 0 ? items.indexOf(selectedItems[0]) : -1;
+
+  const selectEventAtPointer = (clientX: number, rail: HTMLDivElement) => {
+    const x = clientX - rail.getBoundingClientRect().left;
+    const keys = itemsNearX(items, x).map((item) => item.key);
+    setSelectedEventKeys((current) => sameKeys(current, keys) ? current : keys);
+  };
 
   const data = useMemo<AlignedData>(() => {
     const x = dates.map(toUnixDay);
@@ -163,6 +278,8 @@ export function PlayerChart({
     const chartStyle = getComputedStyle(host);
     const annotationFill = chartStyle.getPropertyValue("--chart-annotation-fill").trim();
     const annotationStroke = chartStyle.getPropertyValue("--chart-annotation-stroke").trim();
+    const eventStroke = chartStyle.getPropertyValue("--chart-event-stroke").trim();
+    const eventBand = chartStyle.getPropertyValue("--chart-event-band").trim();
 
     const options: Options = {
       width: initialWidth,
@@ -272,6 +389,18 @@ export function PlayerChart({
             ctx.beginPath();
             ctx.rect(left, top, width, plotHeight);
             ctx.clip();
+
+            ctx.fillStyle = eventBand;
+            for (const event of events) {
+              if (!event.end) continue;
+              const start = toUnixDay(event.date);
+              const end = toUnixDay(event.end) + 86400;
+              if (end <= min || start >= max) continue;
+              const xStart = chart.valToPos(Math.max(start, min), "x", true);
+              const xEnd = chart.valToPos(Math.min(end, max), "x", true);
+              ctx.fillRect(xStart, top, xEnd - xStart, plotHeight);
+            }
+
             ctx.fillStyle = annotationFill;
             ctx.strokeStyle = annotationStroke;
             ctx.lineWidth = pixelRatio;
@@ -295,6 +424,15 @@ export function PlayerChart({
                 ctx.stroke();
               }
             }
+            ctx.strokeStyle = eventStroke;
+            ctx.setLineDash([2 * pixelRatio, 5 * pixelRatio]);
+            for (const group of groupEvents(chart, events, dates[0], dates[dates.length - 1])) {
+              const x = group.x * pixelRatio;
+              ctx.beginPath();
+              ctx.moveTo(x, top);
+              ctx.lineTo(x, top + plotHeight);
+              ctx.stroke();
+            }
             ctx.restore();
           },
         ],
@@ -302,6 +440,13 @@ export function PlayerChart({
           (chart) => {
             const tooltip = tooltipRef.current;
             if (!tooltip) {
+              return;
+            }
+
+            // uPlot sync calls this hook for the other charts too. Only the chart
+            // under the pointer may open details or change its layout.
+            if (!isPlotPointerInsideRef.current) {
+              tooltip.style.opacity = "0";
               return;
             }
 
@@ -317,28 +462,51 @@ export function PlayerChart({
             const xValue = xSeries[index];
             const yValue = maxSeries[index] ?? null;
 
-            if (xValue == null || yValue == null) {
+            if (xValue == null) {
               tooltip.style.opacity = "0";
               return;
             }
 
-            tooltip.innerHTML = `<strong>${formatDateLabel(xValue)}</strong><span>${formatPlayers(yValue)} ${tooltipValueLabel}</span>`;
-            const annotation = annotations.find(
-              (item) => xValue >= toUnixDay(item.start) && xValue < toUnixDay(item.end)
-            );
-            if (annotation) {
-              const note = document.createElement("p");
-              note.className = "uplot-tooltip-note";
-              note.textContent = `${annotation.label} · Incomplete count`;
-              tooltip.appendChild(note);
-            }
-
+            tooltip.innerHTML = `<strong>${formatDateLabel(xValue)}</strong><span>${yValue == null ? "No data for this date" : `${formatPlayers(yValue)} ${tooltipValueLabel}`}</span>`;
             const cursorLeft = chart.cursor.left;
             const cursorTop = chart.cursor.top;
-
             if (cursorLeft == null || cursorTop == null || cursorLeft < 0 || cursorTop < 0) {
               tooltip.style.opacity = "0";
               return;
+            }
+
+            const pixelRatio = chart.ctx.canvas.width / chart.width;
+            const plotLeft = chart.bbox.left / pixelRatio;
+            const hoveredItems = itemsNearX(
+              timelineItems(chart, events, annotations, dates[0], dates[dates.length - 1]),
+              plotLeft + cursorLeft
+            );
+            const hoveredKeys = hoveredItems.map((item) => item.key);
+            setSelectedEventKeys((current) => sameKeys(current, hoveredKeys) ? current : hoveredKeys);
+
+            for (const hoveredItem of hoveredItems) {
+              if (hoveredItem.annotation) {
+                const note = document.createElement("p");
+                note.className = "uplot-tooltip-note";
+                const label = document.createElement("strong");
+                label.textContent = hoveredItem.annotation.label;
+                note.append(label, document.createTextNode(hoveredItem.annotation.description));
+                tooltip.appendChild(note);
+              }
+
+              if (hoveredItem.events) {
+                const note = document.createElement("p");
+                note.className = "uplot-tooltip-history";
+                const label = document.createElement("span");
+                const event = hoveredItem.events[0];
+                label.textContent = event.end
+                  ? `${formatAnnotationDate(event.date, true)} – ${formatAnnotationDate(event.end, true)}`
+                  : formatAnnotationDate(event.date, true);
+                const title = document.createElement("strong");
+                title.textContent = hoveredItem.events.map((item) => item.title).join(" · ");
+                note.append(label, title);
+                tooltip.appendChild(note);
+              }
             }
 
             const bounds = tooltip.offsetParent as HTMLElement | null;
@@ -385,12 +553,17 @@ export function PlayerChart({
     const chart = new uPlot(options, data, host);
     chartRef.current = chart;
 
+    const refreshTimeline = () => {
+      setItems(timelineItems(chart, events, annotations, dates[0], dates[dates.length - 1]));
+    };
+
     const observer = new ResizeObserver((entries) => {
       const width = Math.floor(entries[0]?.contentRect.width ?? host.clientWidth);
       if (width > 0) {
         const nextHeight = resolveHeight(width);
         setChartHeight((current) => (current === nextHeight ? current : nextHeight));
         chart.setSize({ width, height: nextHeight });
+        refreshTimeline();
       }
     });
 
@@ -401,7 +574,7 @@ export function PlayerChart({
       chart.destroy();
       chartRef.current = null;
     };
-  }, [annotations, data, isYAxisBaselineZero, resolveHeight, syncKey, theme, tooltipValueLabel]);
+  }, [annotations, data, dates, events, isYAxisBaselineZero, resolveHeight, syncKey, theme, tooltipValueLabel]);
 
   useEffect(() => {
     if (!chartRef.current || data[0].length === 0) {
@@ -411,7 +584,8 @@ export function PlayerChart({
     const min = toUnixDay(range.start);
     const max = toUnixDay(range.end) + 86399;
     chartRef.current.setScale("x", { min, max });
-  }, [data, range.end, range.start]);
+    setItems(timelineItems(chartRef.current, events, annotations, dates[0], dates[dates.length - 1]));
+  }, [annotations, data, dates, events, range.end, range.start]);
 
   const exportChartAsPng = async () => {
     const chartShell = chartShellRef.current;
@@ -468,6 +642,9 @@ export function PlayerChart({
     <div
       ref={chartShellRef}
       className="border border-[var(--color-surface-2)] rounded-xl bg-[var(--color-surface-1)] p-2.5 animate-[card-enter_340ms_ease_both]"
+      onPointerLeave={(event) => {
+        if (event.pointerType === "mouse") setSelectedEventKeys([]);
+      }}
     >
       {(title || subtitle || shareUrl) && showTitle ? (
         <div className="block m-1 mb-2.5">
@@ -536,34 +713,126 @@ export function PlayerChart({
       <div
         className="border border-[var(--color-chart-shell-border)] rounded-[10px] overflow-hidden relative pt-2.5 bg-gradient-to-b from-[var(--color-chart-frame-start)] to-[var(--color-chart-frame-end)]"
         style={{ height: `${frameHeight}px` }}
+        onPointerEnter={() => { isPlotPointerInsideRef.current = true; }}
+        onPointerDown={() => { isPlotPointerInsideRef.current = true; }}
+        onPointerLeave={() => {
+          isPlotPointerInsideRef.current = false;
+          if (tooltipRef.current) tooltipRef.current.style.opacity = "0";
+        }}
       >
         <div ref={hostRef} className="w-full h-full" />
         <div ref={tooltipRef} className="uplot-tooltip" />
       </div>
-      {visibleAnnotations.length > 0 ? (
-        <aside className="chart-notes" aria-label="Chart data coverage">
-          {visibleAnnotations.map((annotation) => (
-            <div className="chart-note" key={`${annotation.start}-${annotation.end}`}>
-              <span className="chart-note-swatch" aria-hidden="true" />
-              <div className="chart-note-content">
-                <div className="chart-note-heading">
-                  <strong>{annotation.label}</strong>
-                  <span className="chart-note-dates">
-                    <time dateTime={annotation.start}>
-                      {formatAnnotationDate(
-                        annotation.start,
-                        annotation.start.slice(0, 4) !== annotation.end.slice(0, 4)
-                      )}
-                    </time>
-                    {" – "}
-                    <time dateTime={annotation.end}>{formatAnnotationDate(annotation.end, true)}</time>
-                  </span>
-                </div>
-                <p>{annotation.description}</p>
+      {items.length > 0 ? (
+        <section className="chart-history" aria-label="RotMG timeline">
+          <div className="chart-history-heading">
+            <strong>Timeline</strong>
+            <span>Hover or drag near a marker for details</span>
+          </div>
+          <div
+            className="chart-history-rail"
+            onPointerDown={(event) => {
+              event.currentTarget.setPointerCapture(event.pointerId);
+              selectEventAtPointer(event.clientX, event.currentTarget);
+            }}
+            onPointerMove={(event) => {
+              if (event.pointerType === "mouse" || event.buttons > 0) {
+                selectEventAtPointer(event.clientX, event.currentTarget);
+              }
+            }}
+          >
+            {items.filter((item) => item.endX > item.x).map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                className={`chart-history-span${item.annotation ? " chart-history-span-annotation" : ""}`}
+                style={{ left: `${item.x}px`, width: `${Math.max(6, item.endX - item.x)}px` }}
+                aria-label={item.annotation
+                  ? `${item.annotation.label}: ${item.annotation.start} to ${item.annotation.end}`
+                  : `${item.events?.[0].title}: ${item.events?.[0].date} to ${item.events?.[0].end}`}
+                aria-pressed={selectedEventKeys.includes(item.key)}
+                onFocus={(event) => {
+                  if (event.currentTarget.matches(":focus-visible")) setSelectedEventKeys([item.key]);
+                }}
+                onClick={(event) => {
+                  if (event.detail === 0) setSelectedEventKeys([item.key]);
+                }}
+              />
+            ))}
+            {items.filter((item) => item.x === item.endX).map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                className="chart-history-marker"
+                style={{ left: `${item.x}px` }}
+                aria-label={
+                  item.events?.length === 1
+                    ? `${item.events[0].date}: ${item.events[0].title}`
+                    : `${item.events?.length} events: ${item.events?.map((event) => event.title).join(", ")}`
+                }
+                aria-pressed={selectedEventKeys.includes(item.key)}
+                onFocus={(event) => {
+                  if (event.currentTarget.matches(":focus-visible")) setSelectedEventKeys([item.key]);
+                }}
+                onClick={(event) => {
+                  if (event.detail === 0) setSelectedEventKeys([item.key]);
+                }}
+              >
+                <span className="chart-history-marker-symbol" aria-hidden="true" />
+                {(item.events?.length ?? 0) > 1 ? <span className="chart-history-marker-count">{item.events?.length}</span> : null}
+              </button>
+            ))}
+          </div>
+          {selectedItems.length > 0 ? (
+            <div className="chart-history-detail">
+              <div className="chart-history-navigation" aria-label="Browse history events">
+                <button
+                  type="button"
+                  onClick={() => setSelectedEventKeys([items[selectedEventIndex - 1].key])}
+                  disabled={selectedEventIndex <= 0}
+                  aria-label="Previous history event"
+                ><ChevronLeft size={16} aria-hidden="true" /></button>
+                <span>{selectedItems.length > 1 ? `${selectedItems.length} here` : `${selectedEventIndex + 1} of ${items.length}`}</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedEventKeys([items[selectedEventIndex + 1].key])}
+                  disabled={selectedEventIndex >= items.length - 1}
+                  aria-label="Next history event"
+                ><ChevronRight size={16} aria-hidden="true" /></button>
               </div>
+              {selectedItems.map((selectedItem) => (
+                <div className="chart-history-selection" key={selectedItem.key}>
+                  {selectedItem.annotation ? (
+                    <div className="chart-history-entry">
+                      <time dateTime={selectedItem.annotation.start}>
+                        {formatAnnotationDate(selectedItem.annotation.start, true)} – {formatAnnotationDate(selectedItem.annotation.end, true)}
+                      </time>
+                      <strong>{selectedItem.annotation.label}</strong>
+                      <p>{selectedItem.annotation.description}</p>
+                    </div>
+                  ) : null}
+                  {selectedItem.events?.map((event) => (
+                    <div className="chart-history-entry" key={`${event.date}-${event.title}`}>
+                      <time dateTime={event.date}>
+                        {formatAnnotationDate(event.date, true)}
+                        {event.end ? ` – ${formatAnnotationDate(event.end, true)}` : ""}
+                      </time>
+                      <strong>{event.title}</strong>
+                      <p>{event.description}</p>
+                      <div className="chart-history-sources">
+                        {event.sources.map((source) => (
+                          <a key={source.url} href={source.url} target="_blank" rel="noopener noreferrer">
+                            {source.label} <ExternalLink size={12} aria-hidden="true" />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
             </div>
-          ))}
-        </aside>
+          ) : null}
+        </section>
       ) : null}
     </div>
   );

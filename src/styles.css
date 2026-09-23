@@ -61,6 +61,10 @@
   --chart-annotation-stroke: rgba(200, 180, 138, 0.5);
   --chart-annotation-text: #c8b48a;
   --chart-note-text: #b6b6bc;
+  --chart-event-stroke: rgba(100, 195, 177, 0.38);
+  --chart-event-band: rgba(100, 195, 177, 0.07);
+  --chart-event-color: #79c7b7;
+  --chart-event-fill: #183a36;
 }
 
 :root[data-theme="light"] {
@@ -69,6 +73,10 @@
   --chart-annotation-stroke: rgba(145, 109, 47, 0.5);
   --chart-annotation-text: #785b2c;
   --chart-note-text: #596171;
+  --chart-event-stroke: rgba(24, 123, 108, 0.4);
+  --chart-event-band: rgba(24, 123, 108, 0.055);
+  --chart-event-color: #176f61;
+  --chart-event-fill: #e4f3ef;
   --color-bg-dark: #f7f8fb;
   --color-bg-radial-1: rgba(220, 40, 40, 0.14);
   --color-bg-radial-2: rgba(220, 40, 40, 0.08);
@@ -258,6 +266,29 @@ body.modal-open {
   white-space: normal;
 }
 
+.uplot-tooltip-history {
+  max-width: 245px;
+  margin: 8px 0 0;
+  padding-top: 7px;
+  border-top: 1px solid var(--color-border-subtle);
+  line-height: 1.45;
+}
+
+.uplot-tooltip-history span {
+  margin: 0;
+  color: var(--chart-event-color);
+  font-family: inherit;
+  font-size: 0.7rem;
+}
+
+.uplot-tooltip-history strong {
+  margin-top: 2px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  white-space: normal;
+}
+
 .chart-heading {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
@@ -265,59 +296,208 @@ body.modal-open {
   gap: 12px;
 }
 
-.chart-notes {
-  margin: 12px 4px 0;
-  padding: 14px 4px 5px;
-  border-top: 1px solid var(--color-border-subtle);
+.chart-history {
+  margin: 9px 0 0;
 }
 
-.chart-note {
-  display: flex;
-  align-items: start;
-  gap: 12px;
-}
-
-.chart-note + .chart-note {
-  margin-top: 14px;
-}
-
-.chart-note-swatch {
-  flex: 0 0 14px;
-  height: 18px;
-  margin-top: 2px;
-  background: var(--chart-annotation-fill);
-  border-inline: 1px dashed var(--chart-annotation-stroke);
-}
-
-.chart-note-content {
-  min-width: 0;
-}
-
-.chart-note-heading {
+.chart-history-heading {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 3px 14px;
-  line-height: 1.5;
+  gap: 4px 12px;
+  padding: 0 6px 3px;
+  color: var(--color-text-muted);
+  font-size: 0.67rem;
 }
 
-.chart-note-heading strong {
-  color: var(--chart-annotation-text);
-  font-size: 0.8rem;
+.chart-history-heading strong {
+  color: var(--color-text-main);
   font-weight: 600;
 }
 
-.chart-note-dates {
-  color: var(--chart-note-text);
+.chart-history-rail {
+  position: relative;
+  height: 34px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.chart-history-rail::before {
+  position: absolute;
+  top: 16px;
+  right: 0;
+  left: 0;
+  height: 1px;
+  background: var(--color-border-subtle);
+  content: "";
+  pointer-events: none;
+}
+
+.chart-history-marker {
+  position: absolute;
+  z-index: 2;
+  top: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--chart-event-color);
+  cursor: pointer;
+  transform: translateX(-50%);
+}
+
+.chart-history-marker:hover,
+.chart-history-marker[aria-pressed="true"] {
+  background: var(--chart-event-fill);
+}
+
+.chart-history-span {
+  position: absolute;
+  z-index: 1;
+  top: 11px;
+  height: 9px;
+  padding: 0;
+  border: 1px solid var(--chart-event-color);
+  border-radius: 5px;
+  background: var(--chart-event-fill);
+  cursor: pointer;
+}
+
+.chart-history-span:hover,
+.chart-history-span[aria-pressed="true"] {
+  background: var(--chart-event-color);
+}
+
+.chart-history-span-annotation {
+  border-color: var(--chart-annotation-text);
+  background: var(--chart-annotation-fill);
+}
+
+.chart-history-span-annotation:hover,
+.chart-history-span-annotation[aria-pressed="true"] {
+  background: var(--chart-annotation-stroke);
+}
+
+.chart-history-marker:focus-visible,
+.chart-history-span:focus-visible,
+.chart-history-navigation button:focus-visible,
+.chart-history-sources a:focus-visible {
+  outline: 2px solid var(--chart-event-color);
+  outline-offset: 2px;
+}
+
+.chart-history-marker-symbol {
+  display: block;
+  width: 7px;
+  height: 7px;
+  border: 1.5px solid currentColor;
+  background: var(--chart-event-fill);
+  transform: rotate(45deg);
+}
+
+.chart-history-marker-count {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  min-width: 12px;
+  height: 12px;
+  border-radius: 6px;
+  background: var(--chart-event-color);
+  color: var(--color-surface-1);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 12px;
+  text-align: center;
+}
+
+.chart-history-detail {
+  display: grid;
+  gap: 5px;
+  padding: 5px 10px 12px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.chart-history-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-history-navigation button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--chart-event-color);
+  cursor: pointer;
+}
+
+.chart-history-navigation button:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+
+.chart-history-navigation button:disabled {
+  color: var(--color-text-muted);
+  cursor: default;
+  opacity: 0.45;
+}
+
+.chart-history-entry time {
+  margin-right: 10px;
+  color: var(--chart-event-color);
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
 }
 
-.chart-note p {
+.chart-history-entry strong {
+  font-size: 0.82rem;
+}
+
+.chart-history-entry + .chart-history-entry {
+  padding-top: 9px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.chart-history-selection + .chart-history-selection {
+  padding-top: 9px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.chart-history-entry p {
   margin: 4px 0 0;
   color: var(--chart-note-text);
-  font-size: 0.78rem;
-  line-height: 1.65;
+  font-size: 0.77rem;
+  line-height: 1.55;
+}
+
+.chart-history-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 14px;
+  margin-top: 6px;
+}
+
+.chart-history-sources a {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--chart-event-color);
+  font-size: 0.72rem;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 /* uPlot styling */

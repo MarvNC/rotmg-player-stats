@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Github, LineChart, MonitorCog, Moon, Sun, Table2, X } from "lucide-react";
 import { AppSkeleton } from "./components/AppSkeleton";
 import { DataTable } from "./components/DataTable";
+import { HISTORY_EVENTS } from "./data/historyEvents";
 import { PlayerChart, type ChartAnnotation } from "./components/PlayerChart";
 import { RangeSelector } from "./components/RangeSelector";
 import { SharedRangeSlider } from "./components/SharedRangeSlider";
@@ -137,6 +138,7 @@ export default function App() {
   const [expandedChart, setExpandedChart] = useState<ExpandedChart>(null);
   const [isYAxisZeroOn, setIsYAxisZeroOn] = useState(false);
   const [isWeeklySmoothOn, setIsWeeklySmoothOn] = useState(true);
+  const [isHistoryOn, setIsHistoryOn] = useState(true);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     if (typeof window === "undefined") {
       return "system";
@@ -427,6 +429,12 @@ export default function App() {
                     checked={isWeeklySmoothOn}
                     onChange={setIsWeeklySmoothOn}
                   />
+                  <ToggleSwitch
+                    id="global-history"
+                    label="History markers"
+                    checked={isHistoryOn}
+                    onChange={setIsHistoryOn}
+                  />
                 </div>
               </div>
             ) : null}
@@ -449,7 +457,8 @@ export default function App() {
                   shareUrl={SITE_URL}
                   dates={realmeyeDates}
                   maxValues={realmeyeMax}
-                  annotations={REALMEYE_ANNOTATIONS}
+                  annotations={isHistoryOn ? REALMEYE_ANNOTATIONS : undefined}
+                  events={isHistoryOn ? HISTORY_EVENTS : undefined}
                   theme={resolvedTheme}
                   range={effectiveRange}
                   syncKey="rotmg-sync"
@@ -464,6 +473,7 @@ export default function App() {
                   dates={realmstockDates}
                   maxValues={isWeeklySmoothOn ? realmstockSmoothedMax : realmstockMax}
                   tooltipValueLabel="players online"
+                  events={isHistoryOn ? HISTORY_EVENTS : undefined}
                   theme={resolvedTheme}
                   range={effectiveRange}
                   syncKey="rotmg-sync"
@@ -478,6 +488,7 @@ export default function App() {
                   dates={launcherDates}
                   maxValues={isWeeklySmoothOn ? launcherSmoothedLoads : launcherLoads}
                   tooltipValueLabel="loads"
+                  events={isHistoryOn ? HISTORY_EVENTS : undefined}
                   theme={resolvedTheme}
                   range={effectiveRange}
                   syncKey="rotmg-sync"
@@ -536,6 +547,12 @@ export default function App() {
                           onChange={setIsWeeklySmoothOn}
                         />
                       ) : null}
+                      <ToggleSwitch
+                        id="modal-history"
+                        label="History markers"
+                        checked={isHistoryOn}
+                        onChange={setIsHistoryOn}
+                      />
                     </div>
                     <button
                       type="button"
@@ -584,7 +601,8 @@ export default function App() {
                               ? launcherSmoothedLoads
                               : launcherLoads
                       }
-                      annotations={expandedChart === "realmeye" ? REALMEYE_ANNOTATIONS : undefined}
+                      annotations={isHistoryOn && expandedChart === "realmeye" ? REALMEYE_ANNOTATIONS : undefined}
+                      events={isHistoryOn ? HISTORY_EVENTS : undefined}
                       tooltipValueLabel={
                         expandedChart === "realmstock"
                           ? "players online"
