@@ -14,6 +14,8 @@ export default tseslint.config(
       "data/**/*.csv",
       "*.csv",
       "*.tsbuildinfo",
+      ".impeccable/**",
+      ".agents/skills/impeccable/**",
       "eslint.config.mjs",
     ],
   },

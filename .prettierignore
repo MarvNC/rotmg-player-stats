@@ -5,3 +5,5 @@ src/data/daily.json
 *.csv
 *.tsbuildinfo
 bun.lock
+.impeccable/
+.agents/skills/impeccable/
