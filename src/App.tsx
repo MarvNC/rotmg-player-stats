@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Github, LineChart, MonitorCog, Moon, Sun, Table2, X } from "lucide-react";
 import { AppSkeleton } from "./components/AppSkeleton";
 import { DataTable } from "./components/DataTable";
-import { PlayerChart } from "./components/PlayerChart";
+import { PlayerChart, type ChartAnnotation } from "./components/PlayerChart";
 import { RangeSelector } from "./components/RangeSelector";
 import { SharedRangeSlider } from "./components/SharedRangeSlider";
 import { StatsCards } from "./components/StatsCards";
@@ -88,6 +88,16 @@ const CHART_COPY = {
     smoothedSubtitle: "7-day rolling average of total launcher loads per day.",
   },
 } as const;
+
+const REALMEYE_ANNOTATIONS = [
+  {
+    start: "2026-02-24",
+    end: "2026-04-12",
+    label: "Druid tracking gap",
+    description:
+      "Druid launched Feb 24. RealmEye began counting Druid players Apr 12. Counts in the shaded period are incomplete.",
+  },
+] satisfies ChartAnnotation[];
 
 const SITE_URL = "https://rotmg-stats.maarv.dev/";
 const GITHUB_PROFILE_URL = "https://github.com/MarvNC";
@@ -439,6 +449,7 @@ export default function App() {
                   shareUrl={SITE_URL}
                   dates={realmeyeDates}
                   maxValues={realmeyeMax}
+                  annotations={REALMEYE_ANNOTATIONS}
                   theme={resolvedTheme}
                   range={effectiveRange}
                   syncKey="rotmg-sync"
@@ -573,6 +584,7 @@ export default function App() {
                               ? launcherSmoothedLoads
                               : launcherLoads
                       }
+                      annotations={expandedChart === "realmeye" ? REALMEYE_ANNOTATIONS : undefined}
                       tooltipValueLabel={
                         expandedChart === "realmstock"
                           ? "players online"

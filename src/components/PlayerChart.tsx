@@ -5,6 +5,16 @@ import uPlot from "uplot";
 import type { AlignedData, Options } from "uplot";
 import type { DateRange } from "../types";
 
+export type ChartAnnotation = {
+  start: string;
+  /** Exclusive end: tracking resumed on this date. */
+  end: string;
+  label: string;
+  description: string;
+};
+
+const NO_ANNOTATIONS: ChartAnnotation[] = [];
+
 type PlayerChartProps = {
   title: string;
   subtitle?: string;
@@ -22,10 +32,20 @@ type PlayerChartProps = {
   enableExport?: boolean;
   headerControls?: ReactNode;
   isYAxisBaselineZero?: boolean;
+  annotations?: ChartAnnotation[];
 };
 
 function toUnixDay(date: string): number {
   return Math.floor(Date.parse(`${date}T00:00:00Z`) / 1000);
+}
+
+function formatAnnotationDate(date: string, includeYear: boolean): string {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    ...(includeYear ? { year: "numeric" } : {}),
+    timeZone: "UTC",
+  }).format(new Date(`${date}T00:00:00Z`));
 }
 
 function formatDateLabel(unixSeconds: number): string {
@@ -99,6 +119,7 @@ export function PlayerChart({
   enableExport = false,
   headerControls,
   isYAxisBaselineZero = false,
+  annotations = NO_ANNOTATIONS,
 }: PlayerChartProps) {
   const chartShellRef = useRef<HTMLDivElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
@@ -119,6 +140,9 @@ export function PlayerChart({
   );
 
   const frameHeight = chartHeight + 18;
+  const visibleAnnotations = annotations.filter(
+    (annotation) => annotation.start <= range.end && annotation.end > range.start
+  );
 
   const data = useMemo<AlignedData>(() => {
     const x = dates.map(toUnixDay);
@@ -135,6 +159,10 @@ export function PlayerChart({
     const initialHeight = resolveHeight(initialWidth);
 
     setChartHeight(initialHeight);
+
+    const chartStyle = getComputedStyle(host);
+    const annotationFill = chartStyle.getPropertyValue("--chart-annotation-fill").trim();
+    const annotationStroke = chartStyle.getPropertyValue("--chart-annotation-stroke").trim();
 
     const options: Options = {
       width: initialWidth,
@@ -231,6 +259,45 @@ export function PlayerChart({
         },
       ],
       hooks: {
+        drawAxes: [
+          (chart) => {
+            const { left, top, width, height: plotHeight } = chart.bbox;
+            const min = chart.scales.x.min;
+            const max = chart.scales.x.max;
+            if (min == null || max == null) return;
+
+            const ctx = chart.ctx;
+            const pixelRatio = ctx.canvas.width / chart.width;
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(left, top, width, plotHeight);
+            ctx.clip();
+            ctx.fillStyle = annotationFill;
+            ctx.strokeStyle = annotationStroke;
+            ctx.lineWidth = pixelRatio;
+            ctx.setLineDash([3 * pixelRatio, 4 * pixelRatio]);
+
+            for (const annotation of annotations) {
+              const start = toUnixDay(annotation.start);
+              const end = toUnixDay(annotation.end);
+              if (end <= min || start > max) continue;
+
+              const xStart = chart.valToPos(Math.max(start, min), "x", true);
+              const xEnd = chart.valToPos(Math.min(end, max), "x", true);
+              ctx.fillRect(xStart, top, xEnd - xStart, plotHeight);
+
+              for (const boundary of [start, end]) {
+                if (boundary < min || boundary > max) continue;
+                const x = chart.valToPos(boundary, "x", true);
+                ctx.beginPath();
+                ctx.moveTo(x, top);
+                ctx.lineTo(x, top + plotHeight);
+                ctx.stroke();
+              }
+            }
+            ctx.restore();
+          },
+        ],
         setCursor: [
           (chart) => {
             const tooltip = tooltipRef.current;
@@ -256,6 +323,15 @@ export function PlayerChart({
             }
 
             tooltip.innerHTML = `<strong>${formatDateLabel(xValue)}</strong><span>${formatPlayers(yValue)} ${tooltipValueLabel}</span>`;
+            const annotation = annotations.find(
+              (item) => xValue >= toUnixDay(item.start) && xValue < toUnixDay(item.end)
+            );
+            if (annotation) {
+              const note = document.createElement("p");
+              note.className = "uplot-tooltip-note";
+              note.textContent = `${annotation.label} · Incomplete count`;
+              tooltip.appendChild(note);
+            }
 
             const cursorLeft = chart.cursor.left;
             const cursorTop = chart.cursor.top;
@@ -325,7 +401,7 @@ export function PlayerChart({
       chart.destroy();
       chartRef.current = null;
     };
-  }, [data, isYAxisBaselineZero, resolveHeight, syncKey, theme, tooltipValueLabel]);
+  }, [annotations, data, isYAxisBaselineZero, resolveHeight, syncKey, theme, tooltipValueLabel]);
 
   useEffect(() => {
     if (!chartRef.current || data[0].length === 0) {
@@ -395,7 +471,7 @@ export function PlayerChart({
     >
       {(title || subtitle || shareUrl) && showTitle ? (
         <div className="block m-1 mb-2.5">
-          <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-3">
+          <div className="chart-heading">
             {/* Left: share URL watermark */}
             <div className="min-h-[30px] flex items-start">
               {shareUrl ? (
@@ -410,7 +486,7 @@ export function PlayerChart({
             </div>
 
             {/* Center: title + subtitle */}
-            <div className="grid gap-1 justify-items-center">
+            <div className="chart-heading-copy grid gap-1 justify-items-center">
               {title ? (
                 <h2 className="m-0 text-[1.02rem] font-bold tracking-wide text-[var(--color-text-main)] text-center">
                   {title}
@@ -424,7 +500,7 @@ export function PlayerChart({
             </div>
 
             {/* Right: action buttons */}
-            <div className="min-h-[30px] flex justify-end items-start gap-2 flex-wrap">
+            <div className="chart-heading-actions min-h-[30px] flex justify-end items-start gap-2 flex-wrap">
               {headerControls}
               {enableExport ? (
                 <button
@@ -464,6 +540,31 @@ export function PlayerChart({
         <div ref={hostRef} className="w-full h-full" />
         <div ref={tooltipRef} className="uplot-tooltip" />
       </div>
+      {visibleAnnotations.length > 0 ? (
+        <aside className="chart-notes" aria-label="Chart data coverage">
+          {visibleAnnotations.map((annotation) => (
+            <div className="chart-note" key={`${annotation.start}-${annotation.end}`}>
+              <span className="chart-note-swatch" aria-hidden="true" />
+              <div className="chart-note-content">
+                <div className="chart-note-heading">
+                  <strong>{annotation.label}</strong>
+                  <span className="chart-note-dates">
+                    <time dateTime={annotation.start}>
+                      {formatAnnotationDate(
+                        annotation.start,
+                        annotation.start.slice(0, 4) !== annotation.end.slice(0, 4)
+                      )}
+                    </time>
+                    {" – "}
+                    <time dateTime={annotation.end}>{formatAnnotationDate(annotation.end, true)}</time>
+                  </span>
+                </div>
+                <p>{annotation.description}</p>
+              </div>
+            </div>
+          ))}
+        </aside>
+      ) : null}
     </div>
   );
 }

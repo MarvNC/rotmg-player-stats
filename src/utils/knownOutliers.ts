@@ -15,3 +15,8 @@ export const LAUNCHER_EXCLUDED_DATES = new Set<string>([
 export const REALMSTOCK_EXCLUDED_DATES = new Set<string>([
   "2025-02-12", // anomalous low (281 vs ~3200 on adjacent days)
 ]);
+
+/** RealmStock's global live-player feed reports zero during collection outages. */
+export function normalizeRealmstockValue(value: number | null | undefined): number | null {
+  return value == null || value === 0 ? null : value;
+}

@@ -1,5 +1,5 @@
 import type { CompactDaily, DailyPoint } from "../types";
-import { LAUNCHER_EXCLUDED_DATES, REALMSTOCK_EXCLUDED_DATES } from "./knownOutliers";
+import { LAUNCHER_EXCLUDED_DATES, normalizeRealmstockValue, REALMSTOCK_EXCLUDED_DATES } from "./knownOutliers";
 
 function expandDate(compactDate: string): string {
   return `${compactDate.slice(0, 4)}-${compactDate.slice(4, 6)}-${compactDate.slice(6, 8)}`;
@@ -11,7 +11,7 @@ export function decodeDailyData(compact: CompactDaily): DailyPoint[] {
     return {
       date,
       realmeye_max: compact.a[index] ?? null,
-      realmstock_max: REALMSTOCK_EXCLUDED_DATES.has(date) ? null : (compact.c[index] ?? null),
+      realmstock_max: REALMSTOCK_EXCLUDED_DATES.has(date) ? null : normalizeRealmstockValue(compact.c[index]),
       launcher_loads: LAUNCHER_EXCLUDED_DATES.has(date) ? null : (compact.f[index] ?? null),
     };
   });

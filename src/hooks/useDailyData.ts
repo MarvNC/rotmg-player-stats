@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { CompactDaily, DailyPoint, Snapshot } from "../types";
 import { decodeDailyData } from "../utils/decodeDailyData";
+import { normalizeRealmstockValue } from "../utils/knownOutliers";
 
 const DEFAULT_DAILY_DATA_URL = "https://raw.githubusercontent.com/MarvNC/rotmg-player-stats/data/daily.json";
 
@@ -60,7 +61,7 @@ export function useDailyData(): UseDailyDataResult {
             : null;
 
         setData(decodedData);
-        setSnapshot(compactData.s ?? null);
+        setSnapshot(compactData.s == null ? null : { ...compactData.s, c: normalizeRealmstockValue(compactData.s.c) });
         setLastUpdatedAt(resolvedLastUpdatedAt);
       } catch (errorValue) {
         if (abortController.signal.aborted) {

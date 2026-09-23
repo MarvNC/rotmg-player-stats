@@ -57,10 +57,18 @@
 
 :root {
   color-scheme: dark;
+  --chart-annotation-fill: rgba(200, 180, 138, 0.1);
+  --chart-annotation-stroke: rgba(200, 180, 138, 0.5);
+  --chart-annotation-text: #c8b48a;
+  --chart-note-text: #b6b6bc;
 }
 
 :root[data-theme="light"] {
   color-scheme: light;
+  --chart-annotation-fill: rgba(145, 109, 47, 0.09);
+  --chart-annotation-stroke: rgba(145, 109, 47, 0.5);
+  --chart-annotation-text: #785b2c;
+  --chart-note-text: #596171;
   --color-bg-dark: #f7f8fb;
   --color-bg-radial-1: rgba(220, 40, 40, 0.14);
   --color-bg-radial-2: rgba(220, 40, 40, 0.08);
@@ -239,6 +247,79 @@ body.modal-open {
   font-size: 0.8rem;
 }
 
+.uplot-tooltip-note {
+  max-width: 240px;
+  margin: 8px 0 0;
+  padding-top: 7px;
+  border-top: 1px solid var(--color-border-subtle);
+  color: var(--chart-annotation-text);
+  font-size: 0.72rem;
+  line-height: 1.5;
+  white-space: normal;
+}
+
+.chart-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+}
+
+.chart-notes {
+  margin: 12px 4px 0;
+  padding: 14px 4px 5px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.chart-note {
+  display: flex;
+  align-items: start;
+  gap: 12px;
+}
+
+.chart-note + .chart-note {
+  margin-top: 14px;
+}
+
+.chart-note-swatch {
+  flex: 0 0 14px;
+  height: 18px;
+  margin-top: 2px;
+  background: var(--chart-annotation-fill);
+  border-inline: 1px dashed var(--chart-annotation-stroke);
+}
+
+.chart-note-content {
+  min-width: 0;
+}
+
+.chart-note-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 3px 14px;
+  line-height: 1.5;
+}
+
+.chart-note-heading strong {
+  color: var(--chart-annotation-text);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.chart-note-dates {
+  color: var(--chart-note-text);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-note p {
+  margin: 4px 0 0;
+  color: var(--chart-note-text);
+  font-size: 0.78rem;
+  line-height: 1.65;
+}
+
 /* uPlot styling */
 .uplot .u-title {
   font-family: var(--font-sora);
@@ -263,6 +344,24 @@ body.modal-open {
 }
 
 @media (max-width: 640px) {
+  .chart-heading {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px 8px;
+  }
+
+  .chart-heading-copy {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .chart-heading-actions {
+    grid-column: 2;
+  }
+
+  .chart-note-heading {
+    flex-direction: column;
+  }
+
   .stats-grid {
     grid-template-columns: 1fr;
   }
