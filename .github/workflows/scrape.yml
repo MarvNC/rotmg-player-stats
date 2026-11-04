@@ -15,10 +15,20 @@ concurrency:
 jobs:
   scrape:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Checkout canonical data history
+        uses: actions/checkout@v4
+        with:
+          ref: refs/heads/data
+          path: .tmp/published-data
+
+      - name: Set release date
+        run: echo "TARGET_TAG=$(date -u +%F)" >> "$GITHUB_ENV"
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -48,47 +58,45 @@ jobs:
       - name: Aggregate daily JSON
         run: bun run aggregate
 
+      - name: Publish canonical data snapshot
+        run: bun run scripts/publish-snapshot.ts
+
       - name: Ensure daily release exists
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TARGET_TAG="$(date -u +%F)"
-          if ! gh release view "$TARGET_TAG" -R "${{ github.repository }}" > /dev/null 2>&1; then
-            gh release create "$TARGET_TAG" -R "${{ github.repository }}" --title "Data $TARGET_TAG" --notes "Automated daily data release."
-          fi
+          for attempt in 1 2 3; do
+            if gh release view "$TARGET_TAG" -R "${{ github.repository }}" > /dev/null 2>&1; then
+              break
+            fi
+            if gh release create "$TARGET_TAG" -R "${{ github.repository }}" --title "Data $TARGET_TAG" --notes "Automated daily data release."; then
+              break
+            fi
+            if [ "$attempt" = 3 ]; then exit 1; fi
+            sleep $((attempt * 5))
+          done
 
       - name: Upload CSV assets
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TARGET_TAG="$(date -u +%F)"
-          gh release upload "$TARGET_TAG" -R "${{ github.repository }}" data/realmeye-full.csv data/realmstock-full.csv data/launcher-full.csv --clobber
+          for file in data/realmeye-full.csv data/realmstock-full.csv data/launcher-full.csv; do
+            for attempt in 1 2 3; do
+              if gh release upload "$TARGET_TAG" -R "${{ github.repository }}" "$file" --clobber; then
+                break
+              fi
+              if [ "$attempt" = 3 ]; then exit 1; fi
+              sleep $((attempt * 5))
+            done
+          done
 
-      - name: Publish data snapshot to data branch
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          DATA_DIR="$(mktemp -d)"
-          REMOTE="https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
-
-          if git clone --depth 1 --branch data "$REMOTE" "$DATA_DIR"; then
-            :
-          else
-            git clone --depth 1 "$REMOTE" "$DATA_DIR"
-            git -C "$DATA_DIR" checkout --orphan data
-          fi
-
-          mkdir -p "$DATA_DIR/csv"
-          cp src/data/daily.json "$DATA_DIR/daily.json"
-          cp data/realmeye-full.csv "$DATA_DIR/csv/realmeye-full.csv"
-          cp data/realmstock-full.csv "$DATA_DIR/csv/realmstock-full.csv"
-          cp data/launcher-full.csv "$DATA_DIR/csv/launcher-full.csv"
-
-          git -C "$DATA_DIR" add daily.json csv
-          if git -C "$DATA_DIR" diff --cached --quiet; then
-            echo "No data updates to publish."
-            exit 0
-          fi
-
-          git -C "$DATA_DIR" -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -m "chore(data): publish daily snapshot"
-          git -C "$DATA_DIR" push origin data
+      - name: Preserve samples after a failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scrape-recovery-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            data/*.csv
+            src/data/daily.json
+          if-no-files-found: ignore
+          retention-days: 30

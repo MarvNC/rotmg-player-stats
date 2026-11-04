@@ -18,3 +18,5 @@ src/data/daily.json
 
 # Impeccable local configuration and generated artifacts
 .impeccable/
+
+.tmp/

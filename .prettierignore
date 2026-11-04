@@ -7,3 +7,5 @@ src/data/daily.json
 bun.lock
 .impeccable/
 .agents/skills/impeccable/
+
+.tmp/
