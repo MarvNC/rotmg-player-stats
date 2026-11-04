@@ -256,7 +256,7 @@ export function PlayerChart({
   const selectEventAtPointer = (clientX: number, rail: HTMLDivElement) => {
     const x = clientX - rail.getBoundingClientRect().left;
     const keys = itemsNearX(items, x).map((item) => item.key);
-    setSelectedEventKeys((current) => sameKeys(current, keys) ? current : keys);
+    setSelectedEventKeys((current) => (sameKeys(current, keys) ? current : keys));
   };
 
   const data = useMemo<AlignedData>(() => {
@@ -482,7 +482,7 @@ export function PlayerChart({
               plotLeft + cursorLeft
             );
             const hoveredKeys = hoveredItems.map((item) => item.key);
-            setSelectedEventKeys((current) => sameKeys(current, hoveredKeys) ? current : hoveredKeys);
+            setSelectedEventKeys((current) => (sameKeys(current, hoveredKeys) ? current : hoveredKeys));
 
             for (const hoveredItem of hoveredItems) {
               if (hoveredItem.annotation) {
@@ -713,8 +713,12 @@ export function PlayerChart({
       <div
         className="border border-[var(--color-chart-shell-border)] rounded-[10px] overflow-hidden relative pt-2.5 bg-gradient-to-b from-[var(--color-chart-frame-start)] to-[var(--color-chart-frame-end)]"
         style={{ height: `${frameHeight}px` }}
-        onPointerEnter={() => { isPlotPointerInsideRef.current = true; }}
-        onPointerDown={() => { isPlotPointerInsideRef.current = true; }}
+        onPointerEnter={() => {
+          isPlotPointerInsideRef.current = true;
+        }}
+        onPointerDown={() => {
+          isPlotPointerInsideRef.current = true;
+        }}
         onPointerLeave={() => {
           isPlotPointerInsideRef.current = false;
           if (tooltipRef.current) tooltipRef.current.style.opacity = "0";
@@ -741,47 +745,55 @@ export function PlayerChart({
               }
             }}
           >
-            {items.filter((item) => item.endX > item.x).map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                className={`chart-history-span${item.annotation ? " chart-history-span-annotation" : ""}`}
-                style={{ left: `${item.x}px`, width: `${Math.max(6, item.endX - item.x)}px` }}
-                aria-label={item.annotation
-                  ? `${item.annotation.label}: ${item.annotation.start} to ${item.annotation.end}`
-                  : `${item.events?.[0].title}: ${item.events?.[0].date} to ${item.events?.[0].end}`}
-                aria-pressed={selectedEventKeys.includes(item.key)}
-                onFocus={(event) => {
-                  if (event.currentTarget.matches(":focus-visible")) setSelectedEventKeys([item.key]);
-                }}
-                onClick={(event) => {
-                  if (event.detail === 0) setSelectedEventKeys([item.key]);
-                }}
-              />
-            ))}
-            {items.filter((item) => item.x === item.endX).map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                className="chart-history-marker"
-                style={{ left: `${item.x}px` }}
-                aria-label={
-                  item.events?.length === 1
-                    ? `${item.events[0].date}: ${item.events[0].title}`
-                    : `${item.events?.length} events: ${item.events?.map((event) => event.title).join(", ")}`
-                }
-                aria-pressed={selectedEventKeys.includes(item.key)}
-                onFocus={(event) => {
-                  if (event.currentTarget.matches(":focus-visible")) setSelectedEventKeys([item.key]);
-                }}
-                onClick={(event) => {
-                  if (event.detail === 0) setSelectedEventKeys([item.key]);
-                }}
-              >
-                <span className="chart-history-marker-symbol" aria-hidden="true" />
-                {(item.events?.length ?? 0) > 1 ? <span className="chart-history-marker-count">{item.events?.length}</span> : null}
-              </button>
-            ))}
+            {items
+              .filter((item) => item.endX > item.x)
+              .map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  className={`chart-history-span${item.annotation ? " chart-history-span-annotation" : ""}`}
+                  style={{ left: `${item.x}px`, width: `${Math.max(6, item.endX - item.x)}px` }}
+                  aria-label={
+                    item.annotation
+                      ? `${item.annotation.label}: ${item.annotation.start} to ${item.annotation.end}`
+                      : `${item.events?.[0].title}: ${item.events?.[0].date} to ${item.events?.[0].end}`
+                  }
+                  aria-pressed={selectedEventKeys.includes(item.key)}
+                  onFocus={(event) => {
+                    if (event.currentTarget.matches(":focus-visible")) setSelectedEventKeys([item.key]);
+                  }}
+                  onClick={(event) => {
+                    if (event.detail === 0) setSelectedEventKeys([item.key]);
+                  }}
+                />
+              ))}
+            {items
+              .filter((item) => item.x === item.endX)
+              .map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  className="chart-history-marker"
+                  style={{ left: `${item.x}px` }}
+                  aria-label={
+                    item.events?.length === 1
+                      ? `${item.events[0].date}: ${item.events[0].title}`
+                      : `${item.events?.length} events: ${item.events?.map((event) => event.title).join(", ")}`
+                  }
+                  aria-pressed={selectedEventKeys.includes(item.key)}
+                  onFocus={(event) => {
+                    if (event.currentTarget.matches(":focus-visible")) setSelectedEventKeys([item.key]);
+                  }}
+                  onClick={(event) => {
+                    if (event.detail === 0) setSelectedEventKeys([item.key]);
+                  }}
+                >
+                  <span className="chart-history-marker-symbol" aria-hidden="true" />
+                  {(item.events?.length ?? 0) > 1 ? (
+                    <span className="chart-history-marker-count">{item.events?.length}</span>
+                  ) : null}
+                </button>
+              ))}
           </div>
           {selectedItems.length > 0 ? (
             <div className="chart-history-detail">
@@ -791,21 +803,30 @@ export function PlayerChart({
                   onClick={() => setSelectedEventKeys([items[selectedEventIndex - 1].key])}
                   disabled={selectedEventIndex <= 0}
                   aria-label="Previous history event"
-                ><ChevronLeft size={16} aria-hidden="true" /></button>
-                <span>{selectedItems.length > 1 ? `${selectedItems.length} here` : `${selectedEventIndex + 1} of ${items.length}`}</span>
+                >
+                  <ChevronLeft size={16} aria-hidden="true" />
+                </button>
+                <span>
+                  {selectedItems.length > 1
+                    ? `${selectedItems.length} here`
+                    : `${selectedEventIndex + 1} of ${items.length}`}
+                </span>
                 <button
                   type="button"
                   onClick={() => setSelectedEventKeys([items[selectedEventIndex + 1].key])}
                   disabled={selectedEventIndex >= items.length - 1}
                   aria-label="Next history event"
-                ><ChevronRight size={16} aria-hidden="true" /></button>
+                >
+                  <ChevronRight size={16} aria-hidden="true" />
+                </button>
               </div>
               {selectedItems.map((selectedItem) => (
                 <div className="chart-history-selection" key={selectedItem.key}>
                   {selectedItem.annotation ? (
                     <div className="chart-history-entry">
                       <time dateTime={selectedItem.annotation.start}>
-                        {formatAnnotationDate(selectedItem.annotation.start, true)} – {formatAnnotationDate(selectedItem.annotation.end, true)}
+                        {formatAnnotationDate(selectedItem.annotation.start, true)} –{" "}
+                        {formatAnnotationDate(selectedItem.annotation.end, true)}
                       </time>
                       <strong>{selectedItem.annotation.label}</strong>
                       <p>{selectedItem.annotation.description}</p>

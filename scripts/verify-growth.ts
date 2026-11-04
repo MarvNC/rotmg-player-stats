@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { assertContainsCsv } from "./lib/csv";
 
 type BaselineMeta = {
   rows: number;
@@ -45,6 +46,10 @@ function verify(): void {
     }
 
     const filePath = resolve(DATA_DIR, fileName);
+    assertContainsCsv(
+      readFileSync(resolve(ROOT, ".tmp", "baseline-csv", fileName), "utf8"),
+      readFileSync(filePath, "utf8")
+    );
     const rows = fileRows(filePath);
     const bytes = fileSize(filePath);
 
