@@ -33,7 +33,8 @@
     "https://github.com/MarvNC/rotmg-player-stats/actions/runs/43670834954/artifacts/14144530300",
     "https://github.com/MarvNC/rotmg-player-stats/actions/runs/42128993185/artifacts/13462143207",
     "https://github.com/MarvNC/rotmg-player-stats/actions/runs/43667730024/artifacts/14142861339",
-    "https://github.com/MarvNC/rotmg-player-stats/actions/runs/42021079209/artifacts/13411886338"
+    "https://github.com/MarvNC/rotmg-player-stats/actions/runs/42021079209/artifacts/13411886338",
+    "https://github.com/MarvNC/rotmg-player-stats/actions/runs/43715177204/artifacts/14162785366"
   ],
   "files": {
     "realmeye-full.csv": [
@@ -69,7 +70,8 @@
       "11:22:18,2026-11-15,37020",
       "11:42:18,2026-11-15,37024",
       "12:07:18,2026-11-15,37017",
-      "12:25:32,2026-11-15,37014"
+      "12:25:32,2026-11-15,37014",
+      "12:42:17,2026-11-15,37016"
     ],
     "realmstock-full.csv": ["11:42:15,2026-11-05,966", "23:22:11,2026-11-05,2275"],
     "launcher-full.csv": ["23:22:11,2026-11-05,35079467"]
