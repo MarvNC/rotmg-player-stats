@@ -74,7 +74,7 @@ function previousDailyValue(
 function buildDayComparison(
   points: DailyPoint[],
   pick: (p: DailyPoint) => number | null,
-  snapshotValue: number | null
+  snapshotValue: number | null | undefined
 ): DayComparison {
   // Find index of the latest non-null daily entry for this field.
   let latestIdx = -1;
@@ -86,9 +86,9 @@ function buildDayComparison(
     }
   }
 
-  // current = snapshot value if available, else latest daily value
+  // Missing legacy snapshots fall back to daily data; explicit null means unavailable.
   const latestPoint = latestIdx >= 0 ? points[latestIdx] : null;
-  const current = snapshotValue ?? (latestPoint != null ? pick(latestPoint) : null);
+  const current = snapshotValue === undefined ? (latestPoint != null ? pick(latestPoint) : null) : snapshotValue;
 
   // yesterday = the daily entry before the latest
   const yesterday = latestIdx >= 0 ? previousDailyValue(points, pick, latestIdx) : null;
@@ -103,7 +103,7 @@ export function buildStats(
   snapshot: Snapshot | null = null,
   lastUpdatedAt: string | null = null
 ): StatsSummary {
-  const currentRealmeye = snapshot?.a ?? latestRealmeyeValue(points);
+  const currentRealmeye = snapshot?.a === undefined ? latestRealmeyeValue(points) : snapshot.a;
 
   let allTimePeak: { value: number | null; date: string | null } = { value: null, date: null };
   let allTimeLow: { value: number | null; date: string | null } = { value: null, date: null };
@@ -121,8 +121,8 @@ export function buildStats(
 
   return {
     currentRealmeye,
-    currentRealmstock: buildDayComparison(points, (p) => p.realmstock_max, snapshot?.c ?? null),
-    launcherLoads24h: buildDayComparison(points, (p) => p.launcher_loads, snapshot?.f ?? null),
+    currentRealmstock: buildDayComparison(points, (p) => p.realmstock_max, snapshot?.c),
+    launcherLoads24h: buildDayComparison(points, (p) => p.launcher_loads, snapshot?.f),
     allTimePeak,
     allTimeLow,
     lastUpdatedAt: lastUpdatedAt ?? snapshot?.t ?? resolveFallbackLastUpdatedAt(points),

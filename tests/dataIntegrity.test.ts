@@ -7,6 +7,7 @@ import { pickSourceTag, prepareBaseline, SPECS, type Release } from "../scripts/
 import { retry, type Run } from "../scripts/lib/commands";
 import { publishSnapshot } from "../scripts/lib/publish";
 import recovery from "../scripts/recovery/2026-11-04.json";
+import outageRecovery from "../scripts/recovery/2026-11-15.json";
 
 const oldRow = "00:00:00,2026-11-03,100";
 const newRow = "00:00:00,2026-11-04,200";
@@ -63,6 +64,20 @@ describe("CSV history integrity", () => {
   });
 });
 
+describe("outage recovery", () => {
+  it("applies exact artifact rows idempotently without changing later samples", () => {
+    for (const { fileName } of SPECS) {
+      const csv = outageRecovery.files[fileName].join("\n");
+      expect(parseCsv(csv).size).toBe(outageRecovery.files[fileName].length);
+      const later = "23:59:59,2026-11-15,99999";
+      const once = mergeCsv([csv, later]);
+      expect(mergeCsv([once, csv])).toBe(once);
+      assertContainsCsv(later, once);
+    }
+    expect(outageRecovery.files["realmeye-full.csv"]).toContain("11:42:14,2026-11-05,38355");
+  });
+});
+
 describe("baseline preparation", () => {
   it("uses an intact asset from a partial newest release", () => {
     const releases: Release[] = [
@@ -80,7 +95,8 @@ describe("baseline preparation", () => {
     prepareBaseline(root, "owner/repo", run);
     for (const { fileName } of SPECS) {
       const csv = readFileSync(resolve(root, "data", fileName), "utf8");
-      expect(parseCsv(csv).size).toBe(7034);
+      expect(parseCsv(csv).size).toBe(7034 + outageRecovery.files[fileName].length);
+      assertContainsCsv(outageRecovery.files[fileName].join("\n"), csv);
       assertContainsCsv(readFileSync(resolve(root, ".tmp/published-data/csv", fileName), "utf8"), csv);
       assertContainsCsv(recovery.files[fileName].join("\n"), csv);
     }

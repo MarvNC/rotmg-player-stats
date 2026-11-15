@@ -44,18 +44,35 @@ jobs:
         run: bun run baseline:prepare
 
       - name: Scrape RealmEye (strict)
+        id: realmeye
+        continue-on-error: true
+        timeout-minutes: 2
         run: bun run scripts/scrape.ts --source realmeye --strict
 
       - name: Scrape RealmStock (strict)
+        id: realmstock
+        continue-on-error: true
+        timeout-minutes: 2
         run: bun run scripts/scrape.ts --source realmstock --strict
 
       - name: Scrape launcher (strict)
+        id: launcher
+        continue-on-error: true
+        timeout-minutes: 2
         run: bun run scripts/scrape.ts --source launcher --strict
 
-      - name: Verify CSV growth
+      - name: Verify CSV growth and source outcomes
+        env:
+          REALMEYE_OUTCOME: ${{ steps.realmeye.outcome }}
+          REALMSTOCK_OUTCOME: ${{ steps.realmstock.outcome }}
+          LAUNCHER_OUTCOME: ${{ steps.launcher.outcome }}
         run: bun run baseline:verify
 
       - name: Aggregate daily JSON
+        env:
+          REALMEYE_OUTCOME: ${{ steps.realmeye.outcome }}
+          REALMSTOCK_OUTCOME: ${{ steps.realmstock.outcome }}
+          LAUNCHER_OUTCOME: ${{ steps.launcher.outcome }}
         run: bun run aggregate
 
       - name: Publish canonical data snapshot
@@ -89,6 +106,16 @@ jobs:
               sleep $((attempt * 5))
             done
           done
+
+      - name: Report unavailable sources
+        if: steps.realmeye.outcome == 'failure' || steps.realmstock.outcome == 'failure' || steps.launcher.outcome == 'failure'
+        env:
+          REALMEYE_OUTCOME: ${{ steps.realmeye.outcome }}
+          REALMSTOCK_OUTCOME: ${{ steps.realmstock.outcome }}
+          LAUNCHER_OUTCOME: ${{ steps.launcher.outcome }}
+        run: |
+          echo "::warning::Published available sources; outcomes: RealmEye=$REALMEYE_OUTCOME, RealmStock=$REALMSTOCK_OUTCOME, launcher=$LAUNCHER_OUTCOME. Failed sources retain their last real sample."
+          echo "Partial scrape: RealmEye=$REALMEYE_OUTCOME, RealmStock=$REALMSTOCK_OUTCOME, launcher=$LAUNCHER_OUTCOME. No values were filled in for unavailable sources." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Preserve samples after a failure
         if: failure()
