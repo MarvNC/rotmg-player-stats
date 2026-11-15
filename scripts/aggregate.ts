@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { applySnapshotAvailability } from "./lib/snapshot";
 
 type DailyAggregate = {
   date: string;
@@ -401,7 +402,11 @@ function run(): void {
     aggregateMaxByDate(realmstockRows),
     aggregateLauncherLoads(launcherRows)
   );
-  const snapshot = buildSnapshot(realmeyeRows, realmstockRows, launcherRows);
+  const snapshot = applySnapshotAvailability(buildSnapshot(realmeyeRows, realmstockRows, launcherRows), {
+    realmeye: process.env.REALMEYE_OUTCOME,
+    realmstock: process.env.REALMSTOCK_OUTCOME,
+    launcher: process.env.LAUNCHER_OUTCOME,
+  });
   const compact = toCompactDaily(merged, new Date().toISOString(), snapshot);
 
   mkdirSync(resolve(ROOT, "src", "data"), { recursive: true });

@@ -59,3 +59,9 @@ Notes:
 `scripts/recovery/2026-11-04.json` restores 33 exact lost rows per source from the two preserved data commits recorded in that file. It is applied idempotently during baseline preparation, preserving later samples. The restored daily maxima are 38,312 RealmEye players and 2,888 RealmStock players. Samples present only in failed-run logs are not reconstructed with guessed timestamps.
 
 For local pipeline testing, put a checkout of `refs/heads/data` in `.tmp/published-data`, set `GITHUB_REPOSITORY`, and provide normal GitHub CLI access before running `bun run baseline:prepare`. That command reads GitHub but does not publish. `bun run scripts/publish-snapshot.ts` publishes and should only run in the serialized workflow or an explicitly authorized recovery.
+
+### Partial source outages and November 15 recovery
+
+Each source runs independently with a two-minute step limit and 30-second HTTP request timeouts. Failed sources retain their exact baseline; healthy sources must add valid rows. Historical rows are checked for every source. If all sources fail, publication stops. Otherwise healthy data is aggregated and published, and a workflow warning/summary identifies unavailable sources. Missing samples are never invented.
+
+`scripts/recovery/2026-11-15.json` restores exact missing CSV rows from the failure artifacts linked in that file, including the November 5 samples. Recovery is idempotent and precedes baseline verification. Failed-run artifacts are preserved for 30 days; they are not automatically imported. Launcher samples skipped by the old sequential workflow and unavailable RealmStock samples cannot be reconstructed.

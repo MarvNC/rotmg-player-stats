@@ -33,6 +33,28 @@ describe("buildStats", () => {
     expect(stats.allTimeLow.date).toBe("2026-01-01");
     expect(stats.lastUpdatedAt).toBe("2026-01-03T00:00:00.000Z");
   });
+  test("does not replace explicitly unavailable snapshot readings with history", () => {
+    const stats = buildStats(sample, { t: "2026-01-03T12:00:00.000Z", a: null, c: null, f: null });
+    expect(stats.currentRealmeye).toBeNull();
+    expect(stats.currentRealmstock.current).toBeNull();
+    expect(stats.currentRealmstock.delta).toBeNull();
+    expect(stats.launcherLoads24h.current).toBeNull();
+    expect(stats.launcherLoads24h.delta).toBeNull();
+    expect(stats.allTimePeak.value).toBe(130);
+    expect(stats.allTimeLow.value).toBe(100);
+  });
+  test("uses successful current readings beside an unavailable source", () => {
+    const stats = buildStats(sample, { t: "2026-01-03T12:00:00.000Z", a: 105, c: null, f: 1250 });
+    expect(stats.currentRealmeye).toBe(105);
+    expect(stats.currentRealmstock.current).toBeNull();
+    expect(stats.launcherLoads24h.current).toBe(1250);
+  });
+  test("keeps daily fallback for old payloads without a snapshot", () => {
+    const stats = buildStats(sample, null);
+    expect(stats.currentRealmeye).toBe(110);
+    expect(stats.currentRealmstock.current).toBe(22);
+    expect(stats.launcherLoads24h.current).toBe(1200);
+  });
 });
 
 describe("buildTableRows", () => {

@@ -110,6 +110,7 @@ function parseNonNegativeInteger(value: unknown): number | null {
 
 async function scrapeRealmStock(): Promise<number> {
   const response = await fetch("https://realmstock.network/Public/PlayersOnline", {
+    signal: AbortSignal.timeout(30_000),
     headers: {
       Accept: "application/json",
     },
@@ -170,6 +171,7 @@ function parseHistogramValues(html: string): number[] {
 
 async function scrapeRealmEye(): Promise<number> {
   const response = await fetch("https://www.realmeye.com/number-of-active-players-by-rank", {
+    signal: AbortSignal.timeout(30_000),
     headers: {
       "User-Agent": "rotmg-active-players-bot/1.0",
       Accept: "text/html",
@@ -192,6 +194,7 @@ async function scrapeRealmEye(): Promise<number> {
 
 async function scrapeImgurLauncher(): Promise<number> {
   const response = await fetch(`https://imgur.com/${IMGUR_POST_ID}`, {
+    signal: AbortSignal.timeout(30_000),
     headers: {
       "User-Agent": "rotmg-active-players-bot/1.0",
       Accept: "text/html",
@@ -213,6 +216,7 @@ async function scrapeImgurLauncher(): Promise<number> {
   }
 
   const apiResponse = await fetch(`https://api.imgur.com/post/v1/media/${IMGUR_POST_ID}?include=media,account`, {
+    signal: AbortSignal.timeout(30_000),
     headers: {
       Authorization: `Client-ID ${IMGUR_ANON_CLIENT_ID}`,
       Accept: "application/json",

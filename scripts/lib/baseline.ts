@@ -1,6 +1,7 @@
 import { copyFileSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import recovery from "../recovery/2026-11-04.json";
+import outageRecovery from "../recovery/2026-11-15.json";
 import { assertContainsCsv, mergeCsv, parseCsv } from "./csv";
 import { retry, type Run } from "./commands";
 
@@ -75,6 +76,7 @@ export function prepareBaseline(root: string, repository: string, run: Run): voi
     }
     // Auditable, exact rows from preserved commits. Repeated application is a no-op.
     inputs.push(recovery.files[spec.fileName].join("\n"));
+    inputs.push(outageRecovery.files[spec.fileName].join("\n"));
     const merged = mergeCsv(inputs);
     assertContainsCsv(published, merged);
     const target = resolve(dataDir, spec.fileName);

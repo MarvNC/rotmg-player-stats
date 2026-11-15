@@ -5,7 +5,7 @@ export type DailyPoint = {
   launcher_loads: number | null;
 };
 
-/** Latest raw scrape values, published alongside the daily array each run. */
+/** Current scrape values; explicit null means unavailable, not a historical fallback. */
 export type Snapshot = {
   /** ISO 8601 UTC timestamp of the scrape that produced this snapshot */
   t: string;
