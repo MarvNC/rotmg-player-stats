@@ -51,6 +51,7 @@ Notes:
 - Reconciles each CSV with its newest complete release asset. A partial release cannot replace newer canonical history. Invalid rows or conflicting values at the same UTC timestamp fail the run.
 - Verifies all historical rows remain, not just that total size grew.
 - Commits CSVs and regenerated `daily.json` to `data` before replacing release assets. No force pushes or orphan-branch fallbacks are used.
+- Publication retries after 10, 30, 60, and 120 seconds so brief GitHub server errors do not immediately strand samples. Other operations retain short bounded retries.
 - Uses bounded retries for transient failures and checks whether an uncertain push already succeeded. If another publisher advanced `data`, the run stops instead of overwriting it.
 - Stores CSVs and JSON as a 30-day recovery artifact if a run fails.
 
