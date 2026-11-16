@@ -160,7 +160,7 @@ describe("publication safeguards", () => {
         if (command[1] === "push") {
           pushes += 1;
           if (outcome === "accepted-last") {
-            if (pushes === 3) remote = "our-commit";
+            if (pushes === 5) remote = "our-commit";
             throw new Error("connection lost");
           }
           if (pushes === 1) {
@@ -172,8 +172,12 @@ describe("publication safeguards", () => {
         return "";
       };
       if (outcome === "advanced") expect(() => publishSnapshot(root, run, () => {})).toThrow("advanced");
-      else publishSnapshot(root, run, () => {});
-      expect(pushes).toBe(outcome === "accepted-last" ? 3 : outcome === "unchanged" ? 2 : 1);
+      else {
+        const sleep = vi.fn();
+        publishSnapshot(root, run, sleep);
+        if (outcome === "accepted-last") expect(sleep.mock.calls).toEqual([[10000], [30000], [60000], [120000]]);
+      }
+      expect(pushes).toBe(outcome === "accepted-last" ? 5 : outcome === "unchanged" ? 2 : 1);
     }
   );
   it("refuses to publish a candidate that loses canonical history", () => {
