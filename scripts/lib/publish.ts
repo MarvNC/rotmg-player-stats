@@ -33,18 +33,22 @@ export function publishSnapshot(root: string, run: Run, sleep?: (ms: number) => 
     "chore(data): publish daily snapshot"
   );
   const commit = git("rev-parse", "HEAD");
-  retry(() => {
-    // A failed response can still mean the push was accepted. Check before retrying it.
-    const head = remoteHead();
-    if (head === commit) return;
-    if (head !== baselineHead) throw new Error("Data branch advanced; refusing to overwrite another publisher.");
-    try {
-      git("push", "origin", "HEAD:refs/heads/data");
-    } catch (error) {
-      // Also reconcile the final failed response, when no retry remains.
-      if (remoteHead() !== commit) throw error;
-    }
-  }, sleep);
+  retry(
+    () => {
+      // A failed response can still mean the push was accepted. Check before retrying it.
+      const head = remoteHead();
+      if (head === commit) return;
+      if (head !== baselineHead) throw new Error("Data branch advanced; refusing to overwrite another publisher.");
+      try {
+        git("push", "origin", "HEAD:refs/heads/data");
+      } catch (error) {
+        // Also reconcile the final failed response, when no retry remains.
+        if (remoteHead() !== commit) throw error;
+      }
+    },
+    sleep,
+    [10_000, 30_000, 60_000, 120_000]
+  );
   if (remoteHead() !== commit) throw new Error("Could not verify the published data commit.");
   process.stdout.write(`Published canonical data snapshot ${commit}\n`);
 }
