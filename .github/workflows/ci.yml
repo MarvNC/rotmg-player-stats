@@ -64,7 +64,12 @@ jobs:
           HTML_FILE="$html" bun -e '
             import { readRealmEyeCount } from "./scripts/lib/realmeye.ts";
             const html = await Bun.file(process.env.HTML_FILE).text();
-            if (!/<title>Number of active players by rank \| RealmEye\.com<\/title>/i.test(html)) {
+            const title = html.match(/<title\b[^>]*>([^<]*)<\/title\s*>/i)?.[1]?.trim() ?? "";
+            const normalized = title.toLowerCase();
+            const rankMarkup = html.includes("renderPlayerRankHistogram");
+            const target = normalized.includes("number of active players by rank");
+            console.log("Page diagnostics:", JSON.stringify({title: title.slice(0, 120), bytes: html.length, rankMarkup, interstitial: /just a moment|verify you are human|access denied/i.test(html)}));
+            if (!target || !rankMarkup) {
               console.error(/just a moment/i.test(html) ? "Browser did not reach the histogram; interstitial remained." : "Browser did not reach the expected chart page.");
               process.exit(1);
             }
