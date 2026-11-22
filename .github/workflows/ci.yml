@@ -37,3 +37,36 @@ jobs:
 
       - name: ${{ matrix.check.name }}
         run: ${{ matrix.check.command }}
+
+  realmeye-browser-probe:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'dot/realmeye-access-interstitial'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Check ordinary browser access without publishing
+        run: |
+          set -eu
+          html="$(mktemp)"
+          diagnostics="$(mktemp)"
+          trap 'rm -f "$html" "$diagnostics"' EXIT
+          google-chrome --version
+          if ! timeout 45s google-chrome --headless --dump-dom --timeout=25000 https://www.realmeye.com/number-of-active-players-by-rank > "$html" 2> "$diagnostics"; then
+            grep -E 'FATAL|sandbox|Running as root' "$diagnostics" | head -5 || true
+            echo "::error::Chrome did not complete ordinary page navigation."
+            exit 1
+          fi
+          HTML_FILE="$html" bun -e '
+            import { readRealmEyeCount } from "./scripts/lib/realmeye.ts";
+            const html = await Bun.file(process.env.HTML_FILE).text();
+            if (!/<title>Number of active players by rank \| RealmEye\.com<\/title>/i.test(html)) {
+              console.error(/just a moment/i.test(html) ? "Browser did not reach the histogram; interstitial remained." : "Browser did not reach the expected chart page.");
+              process.exit(1);
+            }
+            console.log("RealmEye browser dry run:", await readRealmEyeCount(new Response(html)));
+          '
