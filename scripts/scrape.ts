@@ -1,6 +1,7 @@
 import { appendFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { readRealmEyeCount } from "./lib/realmeye";
 
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const DATA_DIR = resolve(ROOT, "data");
@@ -130,45 +131,6 @@ async function scrapeRealmStock(): Promise<number> {
   return parsed;
 }
 
-function parseHistogramValues(html: string): number[] {
-  const rankHistogramMatch = html.match(/renderPlayerRankHistogram\([^,]+,\s*(\[\[[\s\S]*?\]\])\s*\)/);
-  if (rankHistogramMatch?.[1]) {
-    const pairs = [...rankHistogramMatch[1].matchAll(/\[(\d+),(\d+)\]/g)];
-    const values = pairs
-      .map((match) => Number.parseInt(match[2] ?? "", 10))
-      .filter((value) => Number.isFinite(value) && value >= 0);
-
-    if (values.length > 0) {
-      return values;
-    }
-  }
-
-  const ySeries = [...html.matchAll(/"y"\s*:\s*\[([\d,\s]+)\]/g)]
-    .map((match) => match[1])
-    .filter((value): value is string => Boolean(value));
-
-  if (ySeries.length === 0) {
-    return [];
-  }
-
-  const parsedSeries = ySeries
-    .map((series) =>
-      series
-        .split(",")
-        .map((value) => Number.parseInt(value.trim(), 10))
-        .filter((value) => Number.isFinite(value) && value >= 0)
-    )
-    .filter((series) => series.length > 1);
-
-  if (parsedSeries.length === 0) {
-    return [];
-  }
-
-  parsedSeries.sort((a, b) => b.reduce((sum, value) => sum + value, 0) - a.reduce((sum, value) => sum + value, 0));
-
-  return parsedSeries[0] ?? [];
-}
-
 async function scrapeRealmEye(): Promise<number> {
   const response = await fetch("https://www.realmeye.com/number-of-active-players-by-rank", {
     signal: AbortSignal.timeout(30_000),
@@ -178,18 +140,7 @@ async function scrapeRealmEye(): Promise<number> {
     },
   });
 
-  if (!response.ok) {
-    throw new Error(`RealmEye request failed with ${response.status}`);
-  }
-
-  const html = await response.text();
-  const buckets = parseHistogramValues(html);
-
-  if (buckets.length === 0) {
-    throw new Error("Unable to parse RealmEye histogram data");
-  }
-
-  return buckets.reduce((sum, value) => sum + value, 0);
+  return readRealmEyeCount(response);
 }
 
 async function scrapeImgurLauncher(): Promise<number> {
